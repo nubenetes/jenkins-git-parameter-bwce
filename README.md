@@ -46,83 +46,83 @@ This platform delivers an automated, governed, multi-cluster CI/CD and GitOps de
 
 ```mermaid
 flowchart TB
-    subgraph DevSystems ["1. Developer and External Portals"]
+    subgraph DevSystems ["1. Developer & Portals"]
         Dev["Developer / Ops"]
-        Backstage["Backstage IDP<br/>Software Catalog"]
+        Backstage["Backstage IDP<br/>Service Catalog"]
         ITSM["Jira Service Mgmt<br/>ServiceNow CMDB"]
     end
 
-    subgraph OCP_DEV ["OpenShift Cluster 1: DEV (Control Plane and Workloads)"]
+    subgraph OCP_DEV ["Cluster 1: OCP DEV"]
         direction TB
-        subgraph JenkinsPlatform ["Jenkins Controller (JCasC and Job DSL)"]
-            Master["Jenkins Controller<br/>2.492.2 LTS"]
-            Seed["00-Seed-Job<br/>BWCE Orchestrator"]
-            CIJob["01-CI-Build-Pipeline<br/>Git Param: BWCE App"]
-            CDJob["02-CD-Release-Orchestrator<br/>Git Param: Global Vars"]
+        subgraph JenkinsPlatform ["Jenkins Control Plane"]
+            Master["Jenkins Master<br/>2.492.2 LTS"]
+            Seed["00-Seed-Job<br/>Orchestrator"]
+            CIJob["01-CI-Build<br/>BWCE App Git"]
+            CDJob["02-CD-Release<br/>Global Vars Git"]
         end
 
-        subgraph Agents ["Ephemeral Kubernetes Agent Pods"]
-            BwceAgent["bwce-maven-builder Pod<br/>EAR Package and Test"]
-            GitOpsAgent["argocd-gitops Pod<br/>Skopeo, Cosign, Argo CLI"]
+        subgraph Agents ["Agent Pods"]
+            BwceAgent["bwce-builder<br/>EAR & Tests"]
+            GitOpsAgent["argocd-gitops<br/>Skopeo & Cosign"]
         end
 
-        subgraph OCPDevRegistry ["OCP DEV Internal Registry"]
-            DevReg["image-registry:5000<br/>nubenetes-dev-bwce"]
+        subgraph OCPDevRegistry ["DEV Registry"]
+            DevReg["Internal Registry<br/>dev-bwce"]
         end
 
-        subgraph ArgoCDMaster ["ArgoCD 3.5 Control Plane"]
-            ArgoServer["ArgoCD Server and<br/>ApplicationSets"]
+        subgraph ArgoCDMaster ["ArgoCD 3.5"]
+            ArgoServer["ArgoCD Server<br/>ApplicationSets"]
         end
 
-        subgraph DatadogAgentStack ["Datadog Observability Stack"]
-            DDAgent["Datadog Agent DaemonSet<br/>APM Port 8126 / DogStatsD 8125"]
-            DDCluster["Datadog Cluster Agent<br/>Metrics Provider"]
+        subgraph DatadogAgentStack ["Datadog Stack"]
+            DDAgent["Datadog Agent<br/>APM:8126 | DSD:8125"]
+            DDCluster["Cluster Agent<br/>Metrics Provider"]
         end
 
-        DevApps["TIBCO BWCE DEV Workloads<br/>nubenetes-dev-bwce"]
+        DevApps["BWCE DEV Apps<br/>dev-bwce"]
     end
 
-    subgraph OCP_STG ["OpenShift Cluster 2: STAGING (UAT)"]
-        StgReg["OCP Staging Registry"]
-        StgApps["TIBCO BWCE Staging Workloads<br/>nubenetes-staging-bwce"]
+    subgraph OCP_STG ["Cluster 2: OCP STAGING"]
+        StgReg["STG Registry"]
+        StgApps["BWCE STAGING Apps<br/>staging-bwce"]
     end
 
-    subgraph OCP_PRD ["OpenShift Cluster 3: PROD (High Availability)"]
-        PrdReg["OCP Prod Registry"]
-        PrdApps["TIBCO BWCE Production Workloads<br/>nubenetes-prod-bwce"]
-        RolloutCtrl["Argo Rollouts Controller<br/>Canary Traffic Shifting"]
+    subgraph OCP_PRD ["Cluster 3: OCP PROD"]
+        PrdReg["PROD Registry"]
+        PrdApps["BWCE PROD Apps<br/>prod-bwce"]
+        RolloutCtrl["Argo Rollouts<br/>Canary Controller"]
     end
 
-    subgraph DatadogCloud ["Datadog Cloud Platform (datadoghq.eu)"]
-        DDCIVis["CI/CD Visibility and Spans"]
-        DDAPM["APM Tracing and Profiles"]
-        DDDash["Dashboards and Monitors"]
+    subgraph DatadogCloud ["Datadog Cloud"]
+        DDCIVis["CI Visibility<br/>Pipeline Spans"]
+        DDAPM["APM Tracing<br/>Live Profiling"]
+        DDDash["Dashboards<br/>& Monitors"]
     end
 
-    Dev -->|Selects Branch or Tag| CIJob
-    Dev -->|Selects Config Version| CDJob
-    Backstage -->|REST API Trigger| CDJob
-    ITSM -->|Webhook Dispatch| CDJob
+    Dev -->|"Selects Branch"| CIJob
+    Dev -->|"Selects Config"| CDJob
+    Backstage -->|"REST API"| CDJob
+    ITSM -->|"Webhook"| CDJob
 
-    CIJob -->|Launches Pod| BwceAgent
-    BwceAgent -->|Packages EAR and Builds Container| DevReg
-    CIJob -->|Triggers Downstream| CDJob
+    CIJob -->|"Launches"| BwceAgent
+    BwceAgent -->|"Pushes Image"| DevReg
+    CIJob -->|"Triggers CD"| CDJob
 
-    CDJob -->|Launches Pod| GitOpsAgent
-    GitOpsAgent -->|Skopeo Copy| StgReg
-    GitOpsAgent -->|Skopeo Copy| PrdReg
-    GitOpsAgent -->|Sync and Health Check| ArgoServer
+    CDJob -->|"Launches"| GitOpsAgent
+    GitOpsAgent -->|"Skopeo Copy"| StgReg
+    GitOpsAgent -->|"Skopeo Copy"| PrdReg
+    GitOpsAgent -->|"Sync & Health"| ArgoServer
 
-    ArgoServer -->|GitOps Deploy| DevApps
-    ArgoServer -->|GitOps Deploy| StgApps
-    ArgoServer -->|Sync Waves Deploy| PrdApps
+    ArgoServer -->|"GitOps"| DevApps
+    ArgoServer -->|"GitOps"| StgApps
+    ArgoServer -->|"Sync Waves"| PrdApps
 
-    Master -.->|CI Spans and Logs| DDAgent
-    DevApps -.->|APM Traces and Metrics| DDAgent
-    StgApps -.->|APM Traces and Metrics| DDAgent
-    PrdApps -.->|APM Traces and Metrics| DDAgent
-    DDAgent -->|Forward Data| DatadogCloud
-    RolloutCtrl -.->|Query p99 Latency and Error Rate| DatadogCloud
+    Master -.->|"CI Spans"| DDAgent
+    DevApps -.->|"APM & Metrics"| DDAgent
+    StgApps -.->|"APM & Metrics"| DDAgent
+    PrdApps -.->|"APM & Metrics"| DDAgent
+    DDAgent -->|"HTTPS"| DatadogCloud
+    RolloutCtrl -.->|"Query Metrics"| DatadogCloud
 ```
 
 </details>
@@ -143,27 +143,27 @@ In enterprise TIBCO BWCE implementations, building environment-specific EAR file
 
 ```mermaid
 flowchart LR
-    subgraph BuildTime ["1. CI Packaging (Build Once)"]
-        Source[".bwp Process Sources"] --> Maven["Maven BWCE Plugin"]
-        Maven --> EAR["Single EAR Archive"]
-        EAR --> BaseImage["FROM tibco/bwce:2.9.2"]
-        BaseImage --> Image["Container Image<br/>Immutable Artifact"]
+    subgraph BuildTime ["1. CI Packaging"]
+        Source[".bwp Sources"] --> Maven["Maven Plugin"]
+        Maven --> EAR["Single EAR"]
+        EAR --> BaseImage["tibco/bwce:2.9.2"]
+        BaseImage --> Image["Container Image<br/>(Immutable)"]
     end
 
-    subgraph GitOpsSSOT ["2. Global Vars SSOT Repository"]
-        DevVars["DEV.substvar<br/>dev.yaml"]
-        StgVars["STAGING.substvar<br/>staging.yaml"]
-        PrdVars["PROD.substvar<br/>prod.yaml"]
+    subgraph GitOpsSSOT ["2. Global Vars SSOT"]
+        DevVars["DEV.substvar<br/>(dev.yaml)"]
+        StgVars["STAGING.substvar<br/>(staging.yaml)"]
+        PrdVars["PROD.substvar<br/>(prod.yaml)"]
     end
 
-    subgraph RuntimeDeploy ["3. OpenShift Runtime Deployment"]
-        Image --> OCPDev["DEV Pod<br/>BW_PROFILE=DEV.substvar"]
-        Image --> OCPStg["STAGING Pod<br/>BW_PROFILE=STAGING.substvar"]
-        Image --> OCPPrd["PROD Pod<br/>BW_PROFILE=PROD.substvar"]
+    subgraph RuntimeDeploy ["3. OpenShift Runtime"]
+        Image --> OCPDev["DEV Pod<br/>Profile: DEV"]
+        Image --> OCPStg["STG Pod<br/>Profile: STG"]
+        Image --> OCPPrd["PROD Pod<br/>Profile: PROD"]
 
-        DevVars -.->|Injected via K8s ConfigMap| OCPDev
-        StgVars -.->|Injected via K8s ConfigMap| OCPStg
-        PrdVars -.->|Injected via K8s ConfigMap| OCPPrd
+        DevVars -.->|"ConfigMap"| OCPDev
+        StgVars -.->|"ConfigMap"| OCPStg
+        PrdVars -.->|"ConfigMap"| OCPPrd
     end
 ```
 
@@ -204,36 +204,36 @@ Replaces OpenTelemetry and Grafana with an enterprise **Datadog** observability 
 <br/>
 
 ```mermaid
-flowchart TD
-    subgraph TelemetrySources ["1. OpenShift Workloads & Platform"]
+flowchart TB
+    subgraph Sources ["1. OpenShift Workloads"]
         direction TB
-        Jenkins["Jenkins Controller<br/>(Datadog Plugin 5.9.0)"]
-        BWCEApp["TIBCO BWCE Microservice<br/>(Java Agent dd-java-agent.jar)"]
-        RolloutCtrl["Argo Rollouts Controller<br/>(Progressive Canary)"]
+        Jenkins["Jenkins Master<br/>(Datadog Plugin)"]
+        BWCEApp["TIBCO BWCE App<br/>(dd-java-agent)"]
+        RolloutCtrl["Argo Rollouts<br/>(Canary Engine)"]
     end
 
-    subgraph DaemonSetLayer ["2. Node-Level Agent Layer"]
+    subgraph DaemonSetLayer ["2. Node Agent Layer"]
         direction TB
-        DDAgent["Datadog Agent DaemonSet<br/>• APM Trace Port: 8126<br/>• DogStatsD Port: 8125<br/>• Container Log Collector<br/>• OpenMetrics Scraper (8090)"]
+        DDAgent["Datadog Agent<br/>(DaemonSet)<br/>──────────────<br/>APM Port: 8126<br/>StatsD Port: 8125<br/>Metrics: 8090<br/>Logs: JSON"]
     end
 
-    subgraph CloudPlatform ["3. Datadog Cloud Platform (datadoghq.eu)"]
+    subgraph CloudPlatform ["3. Datadog Cloud Platform"]
         direction TB
-        CIVisibility["CI/CD Visibility Engine<br/>Pipeline Spans & Build Analytics"]
-        APMTrace["APM & Distributed Traces<br/>HTTP & JMS Transaction Flows"]
-        OpenMetrics["Engine Metrics & Counters<br/>Threads, Active Jobs, JVM GC"]
-        Dashboards["Live Dashboards<br/>• Jenkins CI Visibility<br/>• BWCE Engine Telemetry<br/>• ArgoCD GitOps Sync"]
-        Monitors["Automated Alert Monitors<br/>• Error Rate > 1.0%<br/>• p99 Latency > 500ms<br/>• Build Queue Spikes"]
+        CIVisibility["CI Visibility<br/>Pipeline Spans<br/>Queue Metrics"]
+        APMTrace["APM Tracing<br/>HTTP & JMS<br/>Distributed Spans"]
+        OpenMetrics["Engine Metrics<br/>Thread Pools<br/>JVM GC Pauses"]
+        Dashboards["Dashboards<br/>• Jenkins CI<br/>• BWCE Engine<br/>• ArgoCD Sync"]
+        Monitors["Alert Monitors<br/>• 5xx > 1.0%<br/>• p99 > 500ms<br/>• Queue Spikes"]
     end
 
-    Jenkins -->|"CI Spans & Logs"| DDAgent
-    BWCEApp -->|"APM Traces (Port 8126)"| DDAgent
-    BWCEApp -->|"OpenMetrics (Port 8090)"| DDAgent
-    BWCEApp -->|"Container Logs"| DDAgent
+    Jenkins -->|"CI Spans"| DDAgent
+    BWCEApp -->|"APM: 8126"| DDAgent
+    BWCEApp -->|"Metrics: 8090"| DDAgent
+    BWCEApp -->|"Logs"| DDAgent
 
-    DDAgent -->|"HTTPS Port 443"| CIVisibility
-    DDAgent -->|"HTTPS Port 443"| APMTrace
-    DDAgent -->|"HTTPS Port 443"| OpenMetrics
+    DDAgent -->|"HTTPS"| CIVisibility
+    DDAgent -->|"HTTPS"| APMTrace
+    DDAgent -->|"HTTPS"| OpenMetrics
 
     CIVisibility --> Dashboards
     APMTrace --> Dashboards
@@ -243,7 +243,7 @@ flowchart TD
     APMTrace --> Monitors
     OpenMetrics --> Monitors
 
-    RolloutCtrl -.->|"Query p99 & 5xx SLA"| APMTrace
+    RolloutCtrl -.->|"Query SLA"| APMTrace
 ```
 
 </details>
@@ -291,17 +291,17 @@ During canary deployments, Argo Rollouts queries Datadog metrics directly using 
 
 ```mermaid
 flowchart LR
-    Ingress["OpenShift Route Traffic"]
-    Canary["Canary Pods (10% -> 25% -> 50%)<br/>v2.1.0 (New BWCE EAR)"]
-    Stable["Stable Pods (90% -> 75% -> 50%)<br/>v2.0.8 (Current BWCE EAR)"]
-    DatadogMetrics["Datadog APM Metrics API<br/>5xx Rate <= 0.1% | p99 <= 250ms"]
-    RolloutCtrl["Argo Rollouts Controller"]
+    Ingress["OpenShift Route<br/>Ingress Traffic"]
+    Canary["Canary Pods<br/>10% -> 25% -> 50%<br/>v2.1.0 (New EAR)"]
+    Stable["Stable Pods<br/>90% -> 75% -> 50%<br/>v2.0.8 (Stable EAR)"]
+    DatadogMetrics["Datadog APM API<br/>5xx <= 0.1%<br/>p99 <= 250ms"]
+    RolloutCtrl["Argo Rollouts<br/>Controller"]
 
-    Ingress -->|Traffic Split| Canary
-    Ingress -->|Traffic Split| Stable
-    Canary -.->|Emits Traces and Metrics| DatadogMetrics
-    DatadogMetrics -.->|Metric Evaluation| RolloutCtrl
-    RolloutCtrl -->|Pass: Promote to 100%<br/>Fail: Automated Rollback| Ingress
+    Ingress -->|"Traffic Split"| Canary
+    Ingress -->|"Traffic Split"| Stable
+    Canary -.->|"APM Metrics"| DatadogMetrics
+    DatadogMetrics -.->|"SLA Evaluation"| RolloutCtrl
+    RolloutCtrl -->|"Pass: Promote<br/>Fail: Rollback"| Ingress
 ```
 
 </details>
@@ -321,25 +321,25 @@ When engineering teams attempt to introduce multiple `gitParameter` dropdowns in
 
 ```mermaid
 flowchart TB
-    subgraph UI_Phase ["1. Pre-Execution Phase (Master)"]
+    subgraph UI_Phase ["1. Pre-Execution (Master)"]
         direction TB
-        User["User opens Build UI Form"]
-        Master["Master reads Job XML SCM"]
-        GitParam["git-parameter queries remote refs"]
-        Dropdown["Renders Dropdown for Primary Repo"]
+        User["User opens<br/>Build UI Form"]
+        Master["Master reads<br/>Job XML SCM"]
+        GitParam["git-parameter<br/>queries remote refs"]
+        Dropdown["Renders Dropdown<br/>for Primary Repo"]
 
         User --> Master --> GitParam --> Dropdown
     end
 
-    subgraph Runtime_Phase ["2. Runtime Execution Phase (Agent)"]
+    subgraph Runtime_Phase ["2. Runtime Phase (Agent)"]
         direction TB
-        AllocAgent["Ephemeral Agent Pod Allocated"]
-        RunStage["Pipeline Stage: checkout(repo-2)"]
+        AllocAgent["Ephemeral Agent<br/>Pod Allocated"]
+        RunStage["Pipeline Stage:<br/>checkout(repo-2)"]
 
         AllocAgent --> RunStage
     end
 
-    Gap["SCM Blindspot:<br/>Dynamic stage checkouts run during<br/>build and are invisible at UI render"]
+    Gap["SCM Blindspot:<br/>Dynamic checkouts<br/>run during build and are<br/>invisible at UI render"]
 
     Dropdown -.-> Gap
     Gap -.-> RunStage
@@ -364,28 +364,28 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    subgraph InnerLoop ["Inner-Loop (Pattern 1: Dual-Dropdown Pipeline)"]
-        Dev1["Feature Developer"]
-        DualJob["01-CI-*-ci-dual-dropdown<br/>Dropdown 1: App | Dropdown 2: Config"]
-        DevSandbox["Ephemeral Dev Sandbox / PR Preview<br/>nubenetes-dev-bwce"]
+    subgraph InnerLoop ["Pattern 1: Dual-Dropdown"]
+        Dev1["Feature Dev"]
+        DualJob["Dual-Dropdown Job<br/>App & Config Refs"]
+        DevSandbox["Dev Sandbox<br/>dev-bwce"]
 
-        Dev1 -->|Interactive Trigger| DualJob
-        DualJob -->|Direct Deploy| DevSandbox
+        Dev1 -->|"Trigger"| DualJob
+        DualJob -->|"Deploy"| DevSandbox
     end
 
-    subgraph OuterLoop ["Outer-Loop (Pattern 2: Decoupled CI + Multi-Cluster CD)"]
-        Dev2["Team Lead / Release Manager"]
-        CIJob["01-CI-*-ci-build<br/>Dropdown 1: App Repo Only"]
-        Registry["OpenShift DEV Registry"]
-        CDOrchestrator["02-CD-Release-Orchestrator<br/>Dropdown: Global Vars SSOT"]
-        ArgoEngine["ArgoCD 3.5 Engine"]
-        Clusters["Multi-Cluster Promotion Chain<br/>DEV -> STAGING -> PROD"]
+    subgraph OuterLoop ["Pattern 2: Decoupled CI/CD"]
+        Dev2["Release Lead"]
+        CIJob["01-CI-Build<br/>App Repo"]
+        Registry["DEV Registry"]
+        CDOrchestrator["02-CD-Orchestrator<br/>Global Vars SSOT"]
+        ArgoEngine["ArgoCD Engine"]
+        Clusters["Promotion Chain<br/>DEV->STG->PROD"]
 
-        Dev2 -->|Trigger CI| CIJob
-        CIJob -->|Push Image| Registry
-        CIJob -->|Auto-Trigger with Parameters| CDOrchestrator
-        CDOrchestrator -->|Sync Waves| ArgoEngine
-        ArgoEngine -->|Promote and Verify| Clusters
+        Dev2 -->|"Trigger CI"| CIJob
+        CIJob -->|"Push Image"| Registry
+        CIJob -->|"Dispatch"| CDOrchestrator
+        CDOrchestrator -->|"Sync"| ArgoEngine
+        ArgoEngine -->|"Promote"| Clusters
     end
 ```
 
@@ -450,16 +450,16 @@ All container images layered on the BWCE base runtime are cryptographically sign
 
 ```mermaid
 flowchart LR
-    CI["CI Build (Maven BWCE)"]
-    Trivy["Trivy Scan and Syft SBOM"]
-    Cosign["Cosign Signature and SLSA Attestation"]
-    Registry["OCP DEV Registry"]
-    Policy["OpenShift ImageSignaturePolicy<br/>Restricts unsigned images"]
+    CI["CI Build<br/>(Maven BWCE)"]
+    Trivy["Trivy Scan<br/>& Syft SBOM"]
+    Cosign["Cosign Sign<br/>& Attestation"]
+    Registry["OCP DEV<br/>Registry"]
+    Policy["OpenShift Policy<br/>Block Unsigned"]
 
     CI --> Trivy
     Trivy --> Cosign
     Cosign --> Registry
-    Registry -.->|Enforced by| Policy
+    Registry -.->|"Enforced"| Policy
 ```
 
 </details>
@@ -475,16 +475,16 @@ Plaintext credentials (database passwords, JMS connection tokens, Datadog API ke
 
 ```mermaid
 flowchart LR
-    Vault["HashiCorp Vault<br/>Raw Secrets and Keys"]
-    GlobalVars["Global Vars Repo<br/>ExternalSecret Custom Resource"]
-    ESO["External Secrets Operator<br/>OpenShift Controller"]
-    K8sSecret["Native Kubernetes Secret<br/>Decrypted in Memory"]
-    BWCEPod["TIBCO BWCE Pod<br/>Consumes Secret"]
+    Vault["HashiCorp Vault<br/>Secrets & Keys"]
+    GlobalVars["Global Vars Repo<br/>ExternalSecret CRD"]
+    ESO["External Secrets<br/>Operator (ESO)"]
+    K8sSecret["Kubernetes Secret<br/>(In-Memory)"]
+    BWCEPod["TIBCO BWCE Pod<br/>(Workload)"]
 
-    Vault -->|Fetched securely via ServiceAccount| ESO
-    GlobalVars -->|Declares Secret Reference| ESO
-    ESO -->|Generates / Rotates| K8sSecret
-    K8sSecret -->|Mounted as Env / Volume| BWCEPod
+    Vault -->|"Token Fetch"| ESO
+    GlobalVars -->|"Ref Spec"| ESO
+    ESO -->|"Sync/Rotate"| K8sSecret
+    K8sSecret -->|"Env Mount"| BWCEPod
 ```
 
 </details>
@@ -501,15 +501,15 @@ Pull Requests targeting application repositories automatically trigger the **Arg
 ```mermaid
 flowchart LR
     Dev["Developer"]
-    PR["GitHub Pull Request #42"]
-    AppSet["ArgoCD ApplicationSet<br/>Pull Request Generator"]
-    PreviewNS["Ephemeral Preview Namespace<br/>pr-42-preview"]
-    Datadog["Datadog Preview Dashboard"]
+    PR["GitHub PR #42"]
+    AppSet["ArgoCD AppSet<br/>(PR Generator)"]
+    PreviewNS["Preview Env<br/>pr-42-preview"]
+    Datadog["Datadog<br/>PR Dashboard"]
 
-    Dev -->|Opens| PR
-    PR -->|Discovers PR| AppSet
-    AppSet -->|Deploys BWCE App| PreviewNS
-    PreviewNS -->|Injects DD_ENV=pr-42| Datadog
+    Dev -->|"Opens"| PR
+    PR -->|"Discovers"| AppSet
+    AppSet -->|"Deploys"| PreviewNS
+    PreviewNS -->|"DD_ENV"| Datadog
 ```
 
 </details>
