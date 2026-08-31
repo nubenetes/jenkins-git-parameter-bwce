@@ -114,7 +114,7 @@ jobs:
         }
         steps {
           jobDsl {
-            targets('jobdsl/pipelines-ci.groovy\njobdsl/pipelines-cd.groovy')
+            targets('jobdsl/seed-job.groovy\njobdsl/pipelines-ci.groovy\njobdsl/pipelines-cd.groovy')
             removedJobAction('DELETE')
             removedViewAction('DELETE')
             lookupStrategy('JENKINS_ROOT')

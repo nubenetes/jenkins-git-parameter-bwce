@@ -385,45 +385,85 @@ flowchart TB
 
 ### Master Seed Job & JCasC Automation Architecture
 
-The entire platform is self-bootstrapping and self-healing using **Jenkins Configuration as Code (JCasC)** combined with the **Job DSL Plugin**:
+The entire CI/CD platform is self-bootstrapping and self-healing using **Jenkins Configuration as Code (JCasC)** combined with the **Job DSL Plugin**.
 
 <details>
 <summary>⚙️ <b>Click to expand: Seed Job & Job DSL Pipeline Provisioning Flow Diagram</b></summary>
 <br/>
 
 ```mermaid
-flowchart TD
-    subgraph JCasC_Bootstrap ["1. Controller Bootstrap (JCasC)"]
-        JCasC["jenkins-jcasc.yaml<br/>(Master Config)"] -->|Defines on Startup| SeedJob["00-Seed-Job<br/>Platform Orchestrator"]
+flowchart TB
+    subgraph JCasC_Phase ["1. Controller Bootstrap (JCasC)"]
+        direction TB
+        JCasC["jenkins-jcasc.yaml<br/>(Master Config)"] -->|"Registers"| SeedJob["00-Seed-Job<br/>(Platform Seed)"]
     end
 
-    subgraph SCM_Track ["2. SCM Synchronization"]
-        Repo["Git Repository<br/>(jenkins-git-parameter-bwce)"]
-        SeedJob -->|"Polls H/15 * * * *"| Repo
+    subgraph SCM_Phase ["2. SCM Synchronization"]
+        direction TB
+        GitRepo["Git Repository<br/>(Platform Code)"]
+        SeedJob -->|"Polls H/15 * * * *"| GitRepo
+        SeedJob -->|"Evaluates"| JobDSLFiles["Target Scripts<br/>(jobdsl/*.groovy)"]
     end
 
-    subgraph JobDSL_Exec ["3. Job DSL Execution"]
-        SeedJob -->|"Executes"| SeedGroovy["jobdsl/seed-job.groovy<br/>Creates Folders"]
-        SeedJob -->|"Executes"| CIGroovy["jobdsl/pipelines-ci.groovy<br/>Pattern 1 & Pattern 2"]
-        SeedJob -->|"Executes"| CDGroovy["jobdsl/pipelines-cd.groovy<br/>Release Orchestrators"]
+    subgraph Materialization ["3. Pipeline Materialization"]
+        direction TB
+        JobDSLFiles -->|"seed-job.groovy"| Folders["Creates Folders:<br/>• CI Pipelines<br/>• CD Orchestrators"]
+        JobDSLFiles -->|"pipelines-ci.groovy"| CIPipelines["Generates CI:<br/>• order-service-ci<br/>• customer-api-ci"]
+        JobDSLFiles -->|"pipelines-cd.groovy"| CDPipelines["Generates CD:<br/>• release-orchestrator<br/>• hotfix-deploy"]
     end
 
-    subgraph Generated_Pipelines ["4. Generated Pipelines as Code"]
-        SeedGroovy --> Folder1["01-CI-Build-Pipelines/"]
-        SeedGroovy --> Folder2["02-CD-Release-Orchestrators/"]
-        CIGroovy --> DualDrop["*-ci-dual-dropdown<br/>(Pattern 1)"]
-        CIGroovy --> Decoupled["*-ci-build<br/>(Pattern 2)"]
-        CDGroovy --> CDRelease["multicluster-release<br/>(DEV->STG->PROD)"]
-        CDGroovy --> Hotfix["hotfix-deploy<br/>(Emergency Patch)"]
-    end
+    Folders -.->|"Parent"| CIPipelines
+    Folders -.->|"Parent"| CDPipelines
 ```
 
 </details>
 
-1. **JCasC Auto-Registration**: Upon Jenkins Controller startup, [`jcasc/jenkins-jcasc.yaml`](jcasc/jenkins-jcasc.yaml) automatically registers `00-Seed-Job-BWCE-Platform-Orchestrator`.
-2. **SCM Polling & Drift Correction**: The seed job tracks `main` and polls every 15 minutes (`H/15 * * * *`). Any pipeline changes or new services committed to `jobdsl/` are automatically converted into Jenkins pipeline jobs.
-3. **Managed Folders & Deletion Lifecycle**:
-   - `removedJobAction('DELETE')` and `removedViewAction('DELETE')` ensure that obsolete jobs are cleanly purged when removed from code.
+#### 1. Why `jobdsl/seed-job.groovy` Only Declares Folders (Separation of Concerns)
+In enterprise Jenkins-as-Code implementations, we deliberately apply the **Separation of Concerns (SoC)** principle:
+- **Taxonomy & Hierarchy Initialization**: [`jobdsl/seed-job.groovy`](jobdsl/seed-job.groovy) acts as the root taxonomy initializer. It creates and configures the top-level folder containers (`01-CI-Build-Pipelines` and `02-CD-Release-Orchestrators`) along with their descriptions and metadata.
+- **Decoupled Pipeline Generation Logic**: The application CI pipelines ([`jobdsl/pipelines-ci.groovy`](jobdsl/pipelines-ci.groovy)) and CD release orchestrators ([`jobdsl/pipelines-cd.groovy`](jobdsl/pipelines-cd.groovy)) contain iterative business logic (looping over the `apps` inventory, configuring multi-remote refspecs, Git Parameter dropdowns, log rotation, and Datadog CI visibility). Keeping folder declarations separate prevents monolithic scripts and enables modular additions of new business domains.
+
+#### 2. Managing Folders in Job DSL vs. Static JCasC
+While folders *can* technically be defined directly in `jenkins-jcasc.yaml`, managing them through Job DSL is the recommended SRE practice for multi-tenant platforms:
+
+| Architectural Metric | Static JCasC Management (`jenkins-jcasc.yaml`) | Dynamic Job DSL Management (`jobdsl/seed-job.groovy`) |
+| :--- | :--- | :--- |
+| **Creation Lifecycle** | Executed strictly upon Jenkins Controller startup or manual JCasC reload. | Evaluated continuously on every Seed Job execution (automated SCM polling or manual trigger). |
+| **Orphaned Item Pruning** | Does **not** automatically purge folders or child jobs if deleted from configuration. | **Automated Pruning**: `removedJobAction('DELETE')` and `removedViewAction('DELETE')` cleanly destroy removed jobs/folders. |
+| **Configuration Ownership** | Belongs to Controller System Configuration (Platform Admin scope). | Belongs to Version-Controlled GitOps Code (Developer / Application Domain scope). |
+| **Zero-Downtime Evolution** | Renaming or restructuring folders requires reloading master JCasC. | Restructuring folders is applied dynamically via Git commit without touching master configuration. |
+
+#### 3. Step-by-Step Technical Chain & Execution Flow
+1. **JCasC Master Bootstrap**:  
+   When the Jenkins container starts, [`jcasc/jenkins-jcasc.yaml`](jcasc/jenkins-jcasc.yaml) configures the master Seed Job:
+   ```yaml
+   jobs:
+     - script: |
+         job('00-Seed-Job-BWCE-Platform-Orchestrator') {
+           description('Master Seed Job provisioning TIBCO BWCE Pipelines as Code.')
+           scm {
+             git {
+               remote { url('https://github.com/nubenetes/jenkins-git-parameter-bwce.git') }
+               branch('*/main')
+             }
+           }
+           steps {
+             jobDsl {
+               targets('jobdsl/seed-job.groovy\njobdsl/pipelines-ci.groovy\njobdsl/pipelines-cd.groovy')
+               removedJobAction('DELETE')
+               removedViewAction('DELETE')
+               lookupStrategy('JENKINS_ROOT')
+             }
+           }
+           triggers { scm('H/15 * * * *') }
+         }
+   ```
+2. **`lookupStrategy('JENKINS_ROOT')` Context Resolution**:  
+   By setting `lookupStrategy('JENKINS_ROOT')`, Job DSL resolves all relative job paths from the root of Jenkins. This allows `pipelines-ci.groovy` to target `"01-CI-Build-Pipelines/${app.name}-ci-build"` and nest jobs into the folders previously created by `seed-job.groovy`.
+3. **Automated Drift Correction via SCM Polling**:  
+   The trigger `scm('H/15 * * * *')` polls this repository every 15 minutes. When an engineer adds a new microservice to the `def apps = [...]` inventory in `pipelines-ci.groovy` and pushes to `main`, the Seed Job automatically generates the new CI/CD pipelines in Jenkins with zero manual UI configuration.
+
+---
 
 ### Pattern 1: Dual Git Parameter Dropdowns (Multi-Remote SCM)
 *Target: Developer Sandboxes & Feature Preview Environments*
