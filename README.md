@@ -27,6 +27,7 @@ An enterprise-grade, multi-cluster continuous integration and progressive delive
 > - **Sovereign & Air-Gapped Boilerplate**: This project is engineered as a deterministic, version-controlled Infrastructure-as-Code (IaC) template that can be safely used as a **standardized boilerplate in enterprise environments where Agentic AI / LLMs are prohibited** due to data sovereignty, compliance regulations, intellectual property protection, or air-gapped security policies.
 > - **Enterprise Hardening**: Platform engineers must review, adapt, and validate all cluster endpoints, TLS certificates, HashiCorp Vault configurations, Datadog API keys, and RBAC quotas prior to production adoption.
 > - **AI Generation Attribution**: This architecture, Infrastructure-as-Code implementation, and documentation were generated using **Gemini 3.7 Flash** with **Antigravity**.
+> - **Origin & Real-World Heritage**: This blueprint is based on [nubenetes/jenkins-git-parameter](https://github.com/nubenetes/jenkins-git-parameter) and [nubenetes/jenkins-git-parameter-global-vars](https://github.com/nubenetes/jenkins-git-parameter-global-vars), drawing directly from the author's personal hands-on experience designing and operating enterprise integration platforms with these exact requirements (engineered just before agentic AI became widespread).
 
 ---
 
@@ -648,3 +649,5 @@ make reinstall
 
 ## 🔗 Related Repositories
 - **Global Variables SSOT**: [jenkins-git-parameter-bwce-global-vars](https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars)
+- **Base Generic CI/CD Blueprint**: [nubenetes/jenkins-git-parameter](https://github.com/nubenetes/jenkins-git-parameter)
+- **Base Generic Global Variables SSOT**: [nubenetes/jenkins-git-parameter-global-vars](https://github.com/nubenetes/jenkins-git-parameter-global-vars)
