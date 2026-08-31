@@ -11,6 +11,14 @@ An enterprise-grade, multi-cluster continuous integration and progressive delive
 
 ---
 
+> [!IMPORTANT]
+> ### ⚠️ Architectural Blueprint & Sovereign Environment Notice
+> - **Non-Production Testing Status**: This repository serves as an **architectural reference blueprint, educational design pattern, and foundational boilerplate**. It has **not been tested or executed in a live production environment**.
+> - **Sovereign & Air-Gapped Boilerplate**: This project is engineered as a deterministic, version-controlled Infrastructure-as-Code (IaC) template that can be safely used as a **standardized boilerplate in enterprise environments where Agentic AI / LLMs are prohibited** due to data sovereignty, compliance regulations, intellectual property protection, or air-gapped security policies.
+> - **Enterprise Hardening**: Platform engineers must review, adapt, and validate all cluster endpoints, TLS certificates, HashiCorp Vault configurations, Datadog API keys, and RBAC quotas prior to production adoption.
+
+---
+
 ## 📑 Table of Contents
 - [Executive Summary & Architecture Overview](#executive-summary--architecture-overview)
 - [TIBCO BWCE Cloud-Native Best Practices](#tibco-bwce-cloud-native-best-practices)
