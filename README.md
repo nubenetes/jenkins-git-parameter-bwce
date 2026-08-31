@@ -194,11 +194,17 @@ flowchart LR
 ### 2. Engine Sizing & Performance Tuning
 The BusinessWorks Container Edition runtime engine requires deliberate sizing parameters adapted to container cgroups:
 
-| Environment | Replicas | CPU Req/Lim | Memory Req/Lim | `BW_ENGINE_THREADCOUNT` | `BW_STEP_FLOWLIMIT` | `BW_LOGLEVEL` |
+| Environment | Replicas | CPU Request (Burstable) | Memory Req / Limit | `BW_ENGINE_THREADCOUNT` | `BW_STEP_FLOWLIMIT` | `BW_LOGLEVEL` |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **DEV** | 2 | 250m / 1000m | 512Mi / 1024Mi | `16` | `50` | `DEBUG` |
-| **STAGING** | 3 | 500m / 1500m | 768Mi / 1536Mi | `32` | `100` | `INFO` |
-| **PROD** | 6 | 1000m / 2000m | 1024Mi / 2048Mi | `64` | `250` | `WARN` |
+| **DEV** | 2 | `250m` (No CPU Limit) | 512Mi / 1024Mi | `16` | `50` | `DEBUG` |
+| **STAGING** | 3 | `500m` (No CPU Limit) | 768Mi / 1536Mi | `32` | `100` | `INFO` |
+| **PROD** | 6 | `1000m` (No CPU Limit) | 1024Mi / 2048Mi | `64` | `250` | `WARN` |
+
+> [!TIP]
+> #### 💡 Why CPU Limits are Omitted at the Pod Level (Preventing Linux CFS Bandwidth Throttling)
+> - **The CFS Quota Problem in Multi-Threaded Runtimes**: Setting `resources.limits.cpu` instructs the Linux kernel Completely Fair Scheduler (CFS) to enforce hard bandwidth quotas (`cfs_quota_us` over 100ms periods). Because TIBCO BWCE and JVM garbage collection are highly concurrent (e.g. 16–64 engine threads), parallel thread execution can consume the quota in milliseconds, causing the container to be **hard-throttled for the remainder of the period**. This induces artificial p99 latency spikes and timeouts even when the OpenShift worker node has surplus CPU capacity.
+> - **Namespace-Level ResourceQuota Governance**: Instead of per-pod CPU limits, capacity governance and noisy-neighbor protection are enforced at the **OpenShift Project/Namespace boundary** using [`security/openshift-namespace-resource-quota.yaml`](security/openshift-namespace-resource-quota.yaml) (`ResourceQuota` for aggregate `requests.cpu`, `requests.memory`, and `limits.memory`).
+> - **Deterministic Memory Limits**: Unlike CPU (which is compressible), Memory is strictly capped with `limits.memory` to prevent out-of-memory cascading to neighbor pods.
 
 - **`BW_ENGINE_THREADCOUNT`**: Specifies the number of engine worker threads executing process instances concurrently.
 - **`BW_STEP_FLOWLIMIT`**: Prevents unbounded memory growth during traffic bursts by capping active in-memory process transitions.

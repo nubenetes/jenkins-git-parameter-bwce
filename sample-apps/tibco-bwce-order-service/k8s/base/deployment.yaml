@@ -100,5 +100,6 @@ spec:
               cpu: 250m
               memory: 512Mi
             limits:
-              cpu: 1000m
+              # CPU limit omitted to eliminate Linux CFS Bandwidth Throttling.
+              # Multi-tenant governance is enforced via OpenShift Namespace ResourceQuota.
               memory: 1024Mi

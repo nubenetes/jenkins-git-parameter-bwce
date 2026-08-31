@@ -1,0 +1,43 @@
+# ==============================================================================
+# OpenShift Namespace Governance: ResourceQuota & LimitRange
+# Implements production best practice: SRE cluster limits at namespace boundary,
+# omitting per-pod CPU limits to eliminate Linux CFS Bandwidth Throttling.
+# ==============================================================================
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: bwce-namespace-quota
+  namespace: nubenetes-dev-bwce
+  labels:
+    app.kubernetes.io/part-of: tibco-bwce-platform
+    governance.nubenetes.io/tier: enterprise
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.memory: 64Gi
+    pods: "50"
+    count/services: "20"
+    count/routes.route.openshift.io: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: bwce-namespace-limits
+  namespace: nubenetes-dev-bwce
+  labels:
+    app.kubernetes.io/part-of: tibco-bwce-platform
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 250m
+        memory: 512Mi
+      default:
+        memory: 1024Mi
+        # Default CPU limit is intentionally omitted to allow unthrottled burst
+      max:
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 128Mi
