@@ -205,32 +205,35 @@ Replaces OpenTelemetry and Grafana with an enterprise **Datadog** observability 
 
 ```mermaid
 flowchart TD
-    subgraph Sources ["1. Telemetry Sources on OpenShift"]
-        Jenkins["Jenkins Controller<br/>Datadog Plugin 5.9.0"]
-        BWCEApp["TIBCO BWCE Order Service<br/>dd-java-agent.jar"]
-        RolloutCtrl["Argo Rollouts Controller<br/>Canary Evaluation"]
+    subgraph TelemetrySources ["1. OpenShift Workloads & Platform"]
+        direction TB
+        Jenkins["Jenkins Controller<br/>(Datadog Plugin 5.9.0)"]
+        BWCEApp["TIBCO BWCE Microservice<br/>(Java Agent dd-java-agent.jar)"]
+        RolloutCtrl["Argo Rollouts Controller<br/>(Progressive Canary)"]
     end
 
-    subgraph NodeLayer ["2. OpenShift Node Layer"]
-        DDAgent["Datadog Agent DaemonSet<br/>DogStatsD: 8125 | APM: 8126 | Logs: JSON"]
+    subgraph DaemonSetLayer ["2. Node-Level Agent Layer"]
+        direction TB
+        DDAgent["Datadog Agent DaemonSet<br/>• APM Trace Port: 8126<br/>• DogStatsD Port: 8125<br/>• Container Log Collector<br/>• OpenMetrics Scraper (8090)"]
     end
 
-    subgraph DatadogPlatform ["3. Datadog Cloud Platform (datadoghq.eu)"]
-        CIVisibility["CI/CD Visibility<br/>Pipeline Spans and Queue Metrics"]
-        APMTrace["APM and Distributed Tracing<br/>HTTP/JMS Process Execution"]
-        OpenMetrics["OpenMetrics and Engine Counters<br/>Threads, Active Jobs, JVM GC"]
-        Dashboards["Live Dashboards<br/>Jenkins, BWCE Engine, ArgoCD"]
-        Monitors["Alert Monitors<br/>SLAs, Error Rates, GC Pauses"]
+    subgraph CloudPlatform ["3. Datadog Cloud Platform (datadoghq.eu)"]
+        direction TB
+        CIVisibility["CI/CD Visibility Engine<br/>Pipeline Spans & Build Analytics"]
+        APMTrace["APM & Distributed Traces<br/>HTTP & JMS Transaction Flows"]
+        OpenMetrics["Engine Metrics & Counters<br/>Threads, Active Jobs, JVM GC"]
+        Dashboards["Live Dashboards<br/>• Jenkins CI Visibility<br/>• BWCE Engine Telemetry<br/>• ArgoCD GitOps Sync"]
+        Monitors["Automated Alert Monitors<br/>• Error Rate > 1.0%<br/>• p99 Latency > 500ms<br/>• Build Queue Spikes"]
     end
 
-    Jenkins -->|Pipeline Spans and Events| DDAgent
-    BWCEApp -->|APM Spans and Traces| DDAgent
-    BWCEApp -->|Engine OpenMetrics Port 8090| DDAgent
-    BWCEApp -->|Container Logs| DDAgent
+    Jenkins -->|"CI Spans & Logs"| DDAgent
+    BWCEApp -->|"APM Traces (Port 8126)"| DDAgent
+    BWCEApp -->|"OpenMetrics (Port 8090)"| DDAgent
+    BWCEApp -->|"Container Logs"| DDAgent
 
-    DDAgent -->|Encrypted HTTPS Port 443| CIVisibility
-    DDAgent -->|Encrypted HTTPS Port 443| APMTrace
-    DDAgent -->|Encrypted HTTPS Port 443| OpenMetrics
+    DDAgent -->|"HTTPS Port 443"| CIVisibility
+    DDAgent -->|"HTTPS Port 443"| APMTrace
+    DDAgent -->|"HTTPS Port 443"| OpenMetrics
 
     CIVisibility --> Dashboards
     APMTrace --> Dashboards
@@ -240,7 +243,7 @@ flowchart TD
     APMTrace --> Monitors
     OpenMetrics --> Monitors
 
-    RolloutCtrl -.->|Query p99 Latency and 5xx Rate| APMTrace
+    RolloutCtrl -.->|"Query p99 & 5xx SLA"| APMTrace
 ```
 
 </details>
