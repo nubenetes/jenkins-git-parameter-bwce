@@ -21,10 +21,14 @@ An enterprise-grade, multi-cluster continuous integration and progressive delive
   - [1. Jenkins CI/CD Visibility Plugin](#1-jenkins-cicd-visibility-plugin)
   - [2. TIBCO BWCE Java APM Tracer & DogStatsD](#2-tibco-bwce-java-apm-tracer--dogstatsd)
   - [3. Datadog Live Dashboards & Monitors](#3-datadog-live-dashboards--monitors)
-  - [4. Argo Rollouts Progressive Delivery with Datadog Metric Analysis](#4-argo-rollouts-progressive-delivery-with-datadog-metric-analysis)
+  - [4. Progressive Delivery with Argo Rollouts & Datadog Metrics SLA](#4-progressive-delivery-with-argo-rollouts--datadog-metrics-sla)
 - [Multi-Repository Git Parameter CI/CD Patterns](#multi-repository-git-parameter-cicd-patterns)
   - [Pattern 1: Dual Git Parameter Dropdowns (Multi-Remote SCM)](#pattern-1-dual-git-parameter-dropdowns-multi-remote-scm)
   - [Pattern 2: Decoupled CI Build & Multi-Cluster CD Orchestrator](#pattern-2-decoupled-ci-build--multi-cluster-cd-orchestrator)
+- [Enterprise Security & Supply Chain Integrity](#enterprise-security--supply-chain-integrity)
+  - [1. Cosign Image Signing & SLSA Level 3 Attestation](#1-cosign-image-signing--slsa-level-3-attestation)
+  - [2. Zero-Trust Secrets with External Secrets Operator & Vault](#2-zero-trust-secrets-with-external-secrets-operator--vault)
+  - [3. Ephemeral PR Preview Environments via ArgoCD ApplicationSets](#3-ephemeral-pr-preview-environments-via-argocd-applicationsets)
 - [Repository Structure](#repository-structure)
 - [Quick Start & Deployment](#quick-start--deployment)
 - [Decommissioning & Reinstallation](#decommissioning--reinstallation)
@@ -34,32 +38,32 @@ An enterprise-grade, multi-cluster continuous integration and progressive delive
 
 ## Executive Summary & Architecture Overview
 
-This solution addresses a primary enterprise modernization requirement: **how to build, govern, promote, and release TIBCO BWCE microservices across 3 distinct OpenShift clusters (DEV, STAGING, PROD) while leveraging dynamic Git Parameter selection, Declarative Pipelines as Code, ArgoCD 3.5 GitOps synchronization, and native Datadog APM & CI visibility.**
+This platform delivers an automated, governed, multi-cluster CI/CD and GitOps delivery pipeline for enterprise TIBCO BWCE workloads across three OpenShift clusters (DEV, STAGING, PROD).
 
-<details open>
+<details>
 <summary>🗺️ <b>Click to expand: End-to-End Multi-Cluster Platform Topology Diagram</b></summary>
 <br/>
 
 ```mermaid
 flowchart TB
     subgraph DevSystems ["1. Developer and External Portals"]
-        Dev["👩‍💻 Developer / Ops"]
-        Backstage["🏛️ Backstage IDP<br/>(Software Catalog)"]
-        ITSM["🎫 Jira Service Mgmt<br/>and ServiceNow CMDB"]
+        Dev["Developer / Ops"]
+        Backstage["Backstage IDP<br/>Software Catalog"]
+        ITSM["Jira Service Mgmt<br/>ServiceNow CMDB"]
     end
 
     subgraph OCP_DEV ["OpenShift Cluster 1: DEV (Control Plane and Workloads)"]
         direction TB
         subgraph JenkinsPlatform ["Jenkins Controller (JCasC and Job DSL)"]
-            Master["Jenkins Controller<br/>(2.492.2 LTS)"]
+            Master["Jenkins Controller<br/>2.492.2 LTS"]
             Seed["00-Seed-Job<br/>BWCE Orchestrator"]
-            CIJob["01-CI-Build-Pipeline<br/>(Git Param: BWCE App)"]
-            CDJob["02-CD-Release-Orchestrator<br/>(Git Param: Global Vars)"]
+            CIJob["01-CI-Build-Pipeline<br/>Git Param: BWCE App"]
+            CDJob["02-CD-Release-Orchestrator<br/>Git Param: Global Vars"]
         end
 
         subgraph Agents ["Ephemeral Kubernetes Agent Pods"]
-            BwceAgent["bwce-maven-builder Pod<br/>(EAR Package and Unit Test)"]
-            GitOpsAgent["argocd-gitops Pod<br/>(Skopeo, Cosign and Argo CLI)"]
+            BwceAgent["bwce-maven-builder Pod<br/>EAR Package and Test"]
+            GitOpsAgent["argocd-gitops Pod<br/>Skopeo, Cosign, Argo CLI"]
         end
 
         subgraph OCPDevRegistry ["OCP DEV Internal Registry"]
@@ -71,28 +75,28 @@ flowchart TB
         end
 
         subgraph DatadogAgentStack ["Datadog Observability Stack"]
-            DDAgent["🐶 Datadog Agent DaemonSet<br/>(APM Port 8126 / DogStatsD 8125)"]
-            DDCluster["Datadog Cluster Agent<br/>(Metrics Provider)"]
+            DDAgent["Datadog Agent DaemonSet<br/>APM Port 8126 / DogStatsD 8125"]
+            DDCluster["Datadog Cluster Agent<br/>Metrics Provider"]
         end
 
-        DevApps["TIBCO BWCE DEV Workloads<br/>(nubenetes-dev-bwce)"]
+        DevApps["TIBCO BWCE DEV Workloads<br/>nubenetes-dev-bwce"]
     end
 
     subgraph OCP_STG ["OpenShift Cluster 2: STAGING (UAT)"]
         StgReg["OCP Staging Registry"]
-        StgApps["TIBCO BWCE Staging Workloads<br/>(nubenetes-staging-bwce)"]
+        StgApps["TIBCO BWCE Staging Workloads<br/>nubenetes-staging-bwce"]
     end
 
     subgraph OCP_PRD ["OpenShift Cluster 3: PROD (High Availability)"]
         PrdReg["OCP Prod Registry"]
-        PrdApps["TIBCO BWCE Production Workloads<br/>(nubenetes-prod-bwce)"]
-        RolloutCtrl["⚡ Argo Rollouts Controller<br/>(Canary Traffic Shifting)"]
+        PrdApps["TIBCO BWCE Production Workloads<br/>nubenetes-prod-bwce"]
+        RolloutCtrl["Argo Rollouts Controller<br/>Canary Traffic Shifting"]
     end
 
     subgraph DatadogCloud ["Datadog Cloud Platform (datadoghq.eu)"]
-        DDCIVis["🐶 CI/CD Visibility & Spans"]
-        DDAPM["🐶 APM Tracing & Profiles"]
-        DDDash["🐶 Dashboards & Monitors"]
+        DDCIVis["CI/CD Visibility and Spans"]
+        DDAPM["APM Tracing and Profiles"]
+        DDDash["Dashboards and Monitors"]
     end
 
     Dev -->|Selects Branch or Tag| CIJob
@@ -101,24 +105,24 @@ flowchart TB
     ITSM -->|Webhook Dispatch| CDJob
 
     CIJob -->|Launches Pod| BwceAgent
-    BwceAgent -->|Packages EAR & Builds Container| DevReg
+    BwceAgent -->|Packages EAR and Builds Container| DevReg
     CIJob -->|Triggers Downstream| CDJob
 
     CDJob -->|Launches Pod| GitOpsAgent
     GitOpsAgent -->|Skopeo Copy| StgReg
     GitOpsAgent -->|Skopeo Copy| PrdReg
-    GitOpsAgent -->|Sync & Health Check| ArgoServer
+    GitOpsAgent -->|Sync and Health Check| ArgoServer
 
     ArgoServer -->|GitOps Deploy| DevApps
     ArgoServer -->|GitOps Deploy| StgApps
     ArgoServer -->|Sync Waves Deploy| PrdApps
 
-    Master -.->|CI Spans & Logs| DDAgent
-    DevApps -.->|APM Traces & OpenMetrics| DDAgent
-    StgApps -.->|APM Traces & OpenMetrics| DDAgent
-    PrdApps -.->|APM Traces & OpenMetrics| DDAgent
+    Master -.->|CI Spans and Logs| DDAgent
+    DevApps -.->|APM Traces and Metrics| DDAgent
+    StgApps -.->|APM Traces and Metrics| DDAgent
+    PrdApps -.->|APM Traces and Metrics| DDAgent
     DDAgent -->|Forward Data| DatadogCloud
-    RolloutCtrl -.->|Query p99 Latency & Error Rate| DatadogCloud
+    RolloutCtrl -.->|Query p99 Latency and Error Rate| DatadogCloud
 ```
 
 </details>
@@ -129,9 +133,9 @@ flowchart TB
 
 ### 1. 12-Factor Profile Externalization via `.substvar`
 In enterprise TIBCO BWCE implementations, building environment-specific EAR files violates 12-Factor principles. Instead:
-- **Build Once**: A single immutable `.ear` artifact (`tibco-bwce-order-service_2.1.0.ear`) is generated during CI and embedded into the container image (`FROM tibco/bwce:2.9.2`).
-- **Externalize Profiles**: Configuration files (`DEV.substvar`, `STAGING.substvar`, `PROD.substvar`) reside in the Single Source of Truth configuration repository: [`jenkins-git-parameter-bwce-global-vars`](https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars).
-- **Runtime Injection**: The runtime profile is selected via `BW_PROFILE` environment variable or ConfigMap volume mount at startup.
+- **Build Once**: A single immutable `.ear` artifact (`tibco-bwce-order-service_2.1.0.ear`) is compiled during CI and packaged into the container image (`FROM tibco/bwce:2.9.2`).
+- **Externalize Profiles**: Configuration tokens (`DEV.substvar`, `STAGING.substvar`, `PROD.substvar`) reside in the Single Source of Truth configuration repository: [`jenkins-git-parameter-bwce-global-vars`](https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars).
+- **Runtime Injection**: The runtime profile is selected via `BW_PROFILE` environment variable or ConfigMap volume mount at container startup.
 
 <details>
 <summary>⚙️ <b>Click to expand: TIBCO BWCE Profile Externalization Flow Diagram</b></summary>
@@ -139,20 +143,20 @@ In enterprise TIBCO BWCE implementations, building environment-specific EAR file
 
 ```mermaid
 flowchart LR
-    subgraph BuildTime ["CI Packaging (Build Once)"]
+    subgraph BuildTime ["1. CI Packaging (Build Once)"]
         Source[".bwp Process Sources"] --> Maven["Maven BWCE Plugin"]
         Maven --> EAR["Single EAR Archive"]
         EAR --> BaseImage["FROM tibco/bwce:2.9.2"]
-        BaseImage --> Image["Container Image<br/>(Immutable Artifact)"]
+        BaseImage --> Image["Container Image<br/>Immutable Artifact"]
     end
 
-    subgraph GitOpsSSOT ["jenkins-git-parameter-bwce-global-vars"]
-        DevVars["DEV.substvar<br/>(dev.yaml)"]
-        StgVars["STAGING.substvar<br/>(staging.yaml)"]
-        PrdVars["PROD.substvar<br/>(prod.yaml)"]
+    subgraph GitOpsSSOT ["2. Global Vars SSOT Repository"]
+        DevVars["DEV.substvar<br/>dev.yaml"]
+        StgVars["STAGING.substvar<br/>staging.yaml"]
+        PrdVars["PROD.substvar<br/>prod.yaml"]
     end
 
-    subgraph RuntimeDeploy ["OpenShift Runtime Deployment"]
+    subgraph RuntimeDeploy ["3. OpenShift Runtime Deployment"]
         Image --> OCPDev["DEV Pod<br/>BW_PROFILE=DEV.substvar"]
         Image --> OCPStg["STAGING Pod<br/>BW_PROFILE=STAGING.substvar"]
         Image --> OCPPrd["PROD Pod<br/>BW_PROFILE=PROD.substvar"]
@@ -195,26 +199,51 @@ The BusinessWorks Container Edition runtime engine requires deliberate sizing pa
 
 Replaces OpenTelemetry and Grafana with an enterprise **Datadog** observability stack.
 
+<details>
+<summary>📊 <b>Click to expand: Datadog Full-Stack Observability Architecture Diagram</b></summary>
+<br/>
+
 ```mermaid
 flowchart TD
-    subgraph CI_Layer ["1. CI/CD Pipeline Visibility"]
-        JenkinsCtrl["🚀 Jenkins Controller<br/>(Datadog Plugin 5.9.0)"] -->|Pipeline Spans & Traces| DDAgentNode["🐶 Datadog Agent<br/>(DaemonSet Port 8125 / 8126)"]
+    subgraph Sources ["1. Telemetry Sources on OpenShift"]
+        Jenkins["Jenkins Controller<br/>Datadog Plugin 5.9.0"]
+        BWCEApp["TIBCO BWCE Order Service<br/>dd-java-agent.jar"]
+        RolloutCtrl["Argo Rollouts Controller<br/>Canary Evaluation"]
     end
 
-    subgraph App_Layer ["2. BWCE Application APM & Metrics"]
-        BWCEApp["📦 TIBCO BWCE Order Service<br/>(-javaagent:dd-java-agent.jar)"] -->|APM HTTP/JMS Spans (8126)| DDAgentNode
-        BWCEApp -->|OpenMetrics & Thread Pools (8090)| DDAgentNode
-        BWCEApp -->|Container Logs (JSON)| DDAgentNode
+    subgraph NodeLayer ["2. OpenShift Node Layer"]
+        DDAgent["Datadog Agent DaemonSet<br/>DogStatsD: 8125 | APM: 8126 | Logs: JSON"]
     end
 
-    subgraph Delivery_Layer ["3. Progressive Delivery Validation"]
-        RolloutEngine["⚡ Argo Rollouts<br/>(Canary Promotion)"] -->|Queries Metrics API| DDCloudBackend["🐶 Datadog Cloud Platform<br/>(datadoghq.eu)"]
+    subgraph DatadogPlatform ["3. Datadog Cloud Platform (datadoghq.eu)"]
+        CIVisibility["CI/CD Visibility<br/>Pipeline Spans and Queue Metrics"]
+        APMTrace["APM and Distributed Tracing<br/>HTTP/JMS Process Execution"]
+        OpenMetrics["OpenMetrics and Engine Counters<br/>Threads, Active Jobs, JVM GC"]
+        Dashboards["Live Dashboards<br/>Jenkins, BWCE Engine, ArgoCD"]
+        Monitors["Alert Monitors<br/>SLAs, Error Rates, GC Pauses"]
     end
 
-    DDAgentNode -->|Encrypted HTTPS (Port 443)| DDCloudBackend
-    DDCloudBackend -->|Visualizes| LiveDash["📊 Datadog Dashboards<br/>• Jenkins CI Visibility<br/>• BWCE Engine Performance<br/>• ArgoCD GitOps Sync"]
-    DDCloudBackend -->|Alerts| AlertMon["🚨 Datadog Monitors<br/>(Slack / PagerDuty)"]
+    Jenkins -->|Pipeline Spans and Events| DDAgent
+    BWCEApp -->|APM Spans and Traces| DDAgent
+    BWCEApp -->|Engine OpenMetrics Port 8090| DDAgent
+    BWCEApp -->|Container Logs| DDAgent
+
+    DDAgent -->|Encrypted HTTPS Port 443| CIVisibility
+    DDAgent -->|Encrypted HTTPS Port 443| APMTrace
+    DDAgent -->|Encrypted HTTPS Port 443| OpenMetrics
+
+    CIVisibility --> Dashboards
+    APMTrace --> Dashboards
+    OpenMetrics --> Dashboards
+
+    CIVisibility --> Monitors
+    APMTrace --> Monitors
+    OpenMetrics --> Monitors
+
+    RolloutCtrl -.->|Query p99 Latency and 5xx Rate| APMTrace
 ```
+
+</details>
 
 ---
 
@@ -246,14 +275,76 @@ Preconfigured Datadog JSON dashboards and alert monitors located in [`observabil
 - **ArgoCD GitOps Sync**: [`observability/dashboards/datadog-argocd-gitops-sync.json`](observability/dashboards/datadog-argocd-gitops-sync.json)
 - **Automated Monitors**: [`observability/monitors/datadog-monitors-bwce.yaml`](observability/monitors/datadog-monitors-bwce.yaml) (Monitors HTTP 5xx error rate > 1%, p99 latency > 500ms, and build agent queue bottlenecks).
 
-### 4. Argo Rollouts Progressive Delivery with Datadog Metric Analysis
+---
+
+### 4. Progressive Delivery with Argo Rollouts & Datadog Metrics SLA
 During canary deployments, Argo Rollouts queries Datadog metrics directly using [`sample-apps/tibco-bwce-order-service/rollout/analysis-template-datadog.yaml`](sample-apps/tibco-bwce-order-service/rollout/analysis-template-datadog.yaml):
 - **Error Rate SLA**: Evaluates that 5xx errors $\le 0.1\%$ via `sum:trace.tibco_bwce_order_service.request.errors{env:prod}.as_count() / sum:trace.tibco_bwce_order_service.request.hits{env:prod}.as_count()`.
 - **Latency SLA**: Evaluates that p99 latency $\le 250	ext{ms}$ via `p99:trace.tibco_bwce_order_service.request.duration{env:prod}` before traffic step promotion.
 
+<details>
+<summary>🐣 <b>Click to expand: Argo Rollouts Canary Traffic Splitting & Datadog Metric Analysis Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart LR
+    Ingress["OpenShift Route Traffic"]
+    Canary["Canary Pods (10% -> 25% -> 50%)<br/>v2.1.0 (New BWCE EAR)"]
+    Stable["Stable Pods (90% -> 75% -> 50%)<br/>v2.0.8 (Current BWCE EAR)"]
+    DatadogMetrics["Datadog APM Metrics API<br/>5xx Rate <= 0.1% | p99 <= 250ms"]
+    RolloutCtrl["Argo Rollouts Controller"]
+
+    Ingress -->|Traffic Split| Canary
+    Ingress -->|Traffic Split| Stable
+    Canary -.->|Emits Traces and Metrics| DatadogMetrics
+    DatadogMetrics -.->|Metric Evaluation| RolloutCtrl
+    RolloutCtrl -->|Pass: Promote to 100%<br/>Fail: Automated Rollback| Ingress
+```
+
+</details>
+
 ---
 
 ## Multi-Repository Git Parameter CI/CD Patterns
+
+### The Core Problem: Why Standard Pipelines Fail with Multiple Git Repositories
+In cloud-native architectures, applications separate source code (`tibco-bwce-order-service`) from centralized configuration and Helm values (`jenkins-git-parameter-bwce-global-vars`).
+
+When engineering teams attempt to introduce multiple `gitParameter` dropdowns into a single Jenkins Pipeline, they encounter a hard blocker where `GitSCM` appears to only support one repository, or secondary dropdowns fail.
+
+<details>
+<summary>⚠️ <b>Click to expand: Jenkins SCM Lifecycle & Pre-Execution Blindspot Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart TB
+    subgraph UI_Phase ["1. Pre-Execution Phase (Master)"]
+        direction TB
+        User["User opens Build UI Form"]
+        Master["Master reads Job XML SCM"]
+        GitParam["git-parameter queries remote refs"]
+        Dropdown["Renders Dropdown for Primary Repo"]
+
+        User --> Master --> GitParam --> Dropdown
+    end
+
+    subgraph Runtime_Phase ["2. Runtime Execution Phase (Agent)"]
+        direction TB
+        AllocAgent["Ephemeral Agent Pod Allocated"]
+        RunStage["Pipeline Stage: checkout(repo-2)"]
+
+        AllocAgent --> RunStage
+    end
+
+    Gap["SCM Blindspot:<br/>Dynamic stage checkouts run during<br/>build and are invisible at UI render"]
+
+    Dropdown -.-> Gap
+    Gap -.-> RunStage
+```
+
+</details>
+
+---
 
 ### Pattern 1: Dual Git Parameter Dropdowns (Multi-Remote SCM)
 *Target: Developer Sandboxes & Feature Preview Environments*
@@ -263,6 +354,39 @@ During canary deployments, Argo Rollouts queries Datadog metrics directly using 
 
 ### Pattern 2: Decoupled CI Build & Multi-Cluster CD Orchestrator
 *Target: Enterprise Production Release Pipeline (Recommended)*
+
+<details>
+<summary>🧪 <b>Click to expand: Inner-Loop (Pattern 1) vs Outer-Loop (Pattern 2) Coexistence Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart TD
+    subgraph InnerLoop ["Inner-Loop (Pattern 1: Dual-Dropdown Pipeline)"]
+        Dev1["Feature Developer"]
+        DualJob["01-CI-*-ci-dual-dropdown<br/>Dropdown 1: App | Dropdown 2: Config"]
+        DevSandbox["Ephemeral Dev Sandbox / PR Preview<br/>nubenetes-dev-bwce"]
+
+        Dev1 -->|Interactive Trigger| DualJob
+        DualJob -->|Direct Deploy| DevSandbox
+    end
+
+    subgraph OuterLoop ["Outer-Loop (Pattern 2: Decoupled CI + Multi-Cluster CD)"]
+        Dev2["Team Lead / Release Manager"]
+        CIJob["01-CI-*-ci-build<br/>Dropdown 1: App Repo Only"]
+        Registry["OpenShift DEV Registry"]
+        CDOrchestrator["02-CD-Release-Orchestrator<br/>Dropdown: Global Vars SSOT"]
+        ArgoEngine["ArgoCD 3.5 Engine"]
+        Clusters["Multi-Cluster Promotion Chain<br/>DEV -> STAGING -> PROD"]
+
+        Dev2 -->|Trigger CI| CIJob
+        CIJob -->|Push Image| Registry
+        CIJob -->|Auto-Trigger with Parameters| CDOrchestrator
+        CDOrchestrator -->|Sync Waves| ArgoEngine
+        ArgoEngine -->|Promote and Verify| Clusters
+    end
+```
+
+</details>
 
 <details>
 <summary>🔄 <b>Click to expand: End-to-End Hand-off Sequence Diagram</b></summary>
@@ -283,8 +407,8 @@ sequenceDiagram
     Dev->>CI: Trigger Build (Select App Branch)
     activate CI
     CI->>CI: Execute BWUnit Mock Tests
-    CI->>CI: Package EAR & Build Container
-    CI->>CI: Scan with Trivy & Sign with Cosign
+    CI->>CI: Package EAR and Build Container
+    CI->>CI: Scan with Trivy and Sign with Cosign
     CI->>DevReg: Push image (e.g. 2.1.0-42)
     CI->>DDog: Emit CI Span (ci.bwce.pipeline_completed)
     CI->>CD: Dispatch downstream CD Orchestrator
@@ -306,6 +430,83 @@ sequenceDiagram
     DDog-->>Argo: Metrics Passed (100% Promoted)
     CD->>DDog: Emit Release Metric (cd.bwce.release_completed)
     deactivate CD
+```
+
+</details>
+
+---
+
+## Enterprise Security & Supply Chain Integrity
+
+### 1. Cosign Image Signing & SLSA Level 3 Attestation
+All container images layered on the BWCE base runtime are cryptographically signed using Sigstore Cosign during CI execution, guaranteeing supply chain integrity before promotion into production.
+
+<details>
+<summary>🔏 <b>Click to expand: Cosign Image Signing & SLSA Level 3 Attestation Flow Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart LR
+    CI["CI Build (Maven BWCE)"]
+    Trivy["Trivy Scan and Syft SBOM"]
+    Cosign["Cosign Signature and SLSA Attestation"]
+    Registry["OCP DEV Registry"]
+    Policy["OpenShift ImageSignaturePolicy<br/>Restricts unsigned images"]
+
+    CI --> Trivy
+    Trivy --> Cosign
+    Cosign --> Registry
+    Registry -.->|Enforced by| Policy
+```
+
+</details>
+
+---
+
+### 2. Zero-Trust Secrets with External Secrets Operator & Vault
+Plaintext credentials (database passwords, JMS connection tokens, Datadog API keys) are never stored in Git. Instead, the **External Secrets Operator (ESO)** synchronizes encrypted secrets from HashiCorp Vault directly into OpenShift namespaces.
+
+<details>
+<summary>🔐 <b>Click to expand: External Secrets Operator & Vault Synchronization Flow Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart LR
+    Vault["HashiCorp Vault<br/>Raw Secrets and Keys"]
+    GlobalVars["Global Vars Repo<br/>ExternalSecret Custom Resource"]
+    ESO["External Secrets Operator<br/>OpenShift Controller"]
+    K8sSecret["Native Kubernetes Secret<br/>Decrypted in Memory"]
+    BWCEPod["TIBCO BWCE Pod<br/>Consumes Secret"]
+
+    Vault -->|Fetched securely via ServiceAccount| ESO
+    GlobalVars -->|Declares Secret Reference| ESO
+    ESO -->|Generates / Rotates| K8sSecret
+    K8sSecret -->|Mounted as Env / Volume| BWCEPod
+```
+
+</details>
+
+---
+
+### 3. Ephemeral PR Preview Environments via ArgoCD ApplicationSets
+Pull Requests targeting application repositories automatically trigger the **ArgoCD PR Generator ApplicationSet**, creating ephemeral preview namespaces for end-to-end integration testing before merging.
+
+<details>
+<summary>⚡ <b>Click to expand: Ephemeral PR Preview Provisioning Flow Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart LR
+    Dev["Developer"]
+    PR["GitHub Pull Request #42"]
+    AppSet["ArgoCD ApplicationSet<br/>Pull Request Generator"]
+    PreviewNS["Ephemeral Preview Namespace<br/>pr-42-preview"]
+    Datadog["Datadog Preview Dashboard"]
+
+    Dev -->|Opens| PR
+    PR -->|Discovers PR| AppSet
+    AppSet -->|Deploys BWCE App| PreviewNS
+    PreviewNS -->|Injects DD_ENV=pr-42| Datadog
 ```
 
 </details>
@@ -391,6 +592,35 @@ make deploy
 - **Jenkins Controller**: `https://jenkins-jenkins.apps.ocp-dev.nubenetes.internal` (Default login: `admin` / `admin123!`)
 - **ArgoCD UI**: `https://argocd-server.apps.ocp-dev.nubenetes.internal`
 - **Datadog Dashboard**: `https://app.datadoghq.eu`
+
+---
+
+## Decommissioning & Reinstallation
+
+### Clean Decommission
+```bash
+./destroy.sh
+# or
+make destroy
+```
+
+### Full Reinstallation
+```bash
+./reinstall.sh
+# or
+make reinstall
+```
+
+---
+
+## References & Standards
+1. **TIBCO BWCE Documentation**: [TIBCO BusinessWorks™ Container Edition Official Docs](https://docs.tibco.com/)
+2. **Datadog Jenkins Integration**: [Datadog CI Visibility & Jenkins Plugin](https://docs.datadoghq.com/continuous_integration/pipelines/jenkins/)
+3. **Datadog Java Tracer APM**: [Datadog Java Agent Documentation](https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/java/)
+4. **ArgoCD 3.5 & ApplicationSets**: [ArgoCD Documentation](https://argo-cd.readthedocs.io/en/stable/)
+5. **Sigstore Cosign**: [Cosign Container Signing Documentation](https://docs.sigstore.dev/cosign/overview/)
+6. **External Secrets Operator**: [External Secrets Operator Docs](https://external-secrets.io/)
+7. **Jenkins Job DSL & Git Parameter**: [Jenkins Job DSL API](https://jenkinsci.github.io/job-dsl-plugin/)
 
 ---
 
