@@ -375,6 +375,50 @@ flowchart TB
 
 ---
 
+---
+
+### Master Seed Job & JCasC Automation Architecture
+
+The entire platform is self-bootstrapping and self-healing using **Jenkins Configuration as Code (JCasC)** combined with the **Job DSL Plugin**:
+
+<details>
+<summary>⚙️ <b>Click to expand: Seed Job & Job DSL Pipeline Provisioning Flow Diagram</b></summary>
+<br/>
+
+```mermaid
+flowchart TD
+    subgraph JCasC_Bootstrap ["1. Controller Bootstrap (JCasC)"]
+        JCasC["jenkins-jcasc.yaml<br/>(Master Config)"] -->|Defines on Startup| SeedJob["00-Seed-Job<br/>Platform Orchestrator"]
+    end
+
+    subgraph SCM_Track ["2. SCM Synchronization"]
+        Repo["Git Repository<br/>(jenkins-git-parameter-bwce)"]
+        SeedJob -->|"Polls H/15 * * * *"| Repo
+    end
+
+    subgraph JobDSL_Exec ["3. Job DSL Execution"]
+        SeedJob -->|"Executes"| SeedGroovy["jobdsl/seed-job.groovy<br/>Creates Folders"]
+        SeedJob -->|"Executes"| CIGroovy["jobdsl/pipelines-ci.groovy<br/>Pattern 1 & Pattern 2"]
+        SeedJob -->|"Executes"| CDGroovy["jobdsl/pipelines-cd.groovy<br/>Release Orchestrators"]
+    end
+
+    subgraph Generated_Pipelines ["4. Generated Pipelines as Code"]
+        SeedGroovy --> Folder1["01-CI-Build-Pipelines/"]
+        SeedGroovy --> Folder2["02-CD-Release-Orchestrators/"]
+        CIGroovy --> DualDrop["*-ci-dual-dropdown<br/>(Pattern 1)"]
+        CIGroovy --> Decoupled["*-ci-build<br/>(Pattern 2)"]
+        CDGroovy --> CDRelease["multicluster-release<br/>(DEV->STG->PROD)"]
+        CDGroovy --> Hotfix["hotfix-deploy<br/>(Emergency Patch)"]
+    end
+```
+
+</details>
+
+1. **JCasC Auto-Registration**: Upon Jenkins Controller startup, [`jcasc/jenkins-jcasc.yaml`](jcasc/jenkins-jcasc.yaml) automatically registers `00-Seed-Job-BWCE-Platform-Orchestrator`.
+2. **SCM Polling & Drift Correction**: The seed job tracks `main` and polls every 15 minutes (`H/15 * * * *`). Any pipeline changes or new services committed to `jobdsl/` are automatically converted into Jenkins pipeline jobs.
+3. **Managed Folders & Deletion Lifecycle**:
+   - `removedJobAction('DELETE')` and `removedViewAction('DELETE')` ensure that obsolete jobs are cleanly purged when removed from code.
+
 ### Pattern 1: Dual Git Parameter Dropdowns (Multi-Remote SCM)
 *Target: Developer Sandboxes & Feature Preview Environments*
 - **Dropdown 1**: Queries application repository (`APP_GIT_REVISION`).
