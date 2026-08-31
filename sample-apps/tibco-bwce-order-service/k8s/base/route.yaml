@@ -1,0 +1,17 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: tibco-bwce-order-service
+  labels:
+    app.kubernetes.io/name: tibco-bwce-order-service
+spec:
+  host: tibco-bwce-order-service-dev.apps.ocp-dev.nubenetes.internal
+  to:
+    kind: Service
+    name: tibco-bwce-order-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

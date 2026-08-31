@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tibco-bwce-order-service
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        tags.datadoghq.com/env: dev

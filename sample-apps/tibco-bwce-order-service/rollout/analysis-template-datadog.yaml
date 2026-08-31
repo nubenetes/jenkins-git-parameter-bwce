@@ -1,0 +1,32 @@
+# ==============================================================================
+# Argo Rollouts: AnalysisTemplate with Datadog Metric Provider (TIBCO BWCE)
+# Queries Datadog Metrics API for HTTP 5xx error rate and p99 response latency
+# ==============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: datadog-bwce-success-rate-and-latency
+  namespace: nubenetes-prod-bwce
+spec:
+  metrics:
+    # 1. Error Rate Verification (HTTP 5xx < 0.1%) via Datadog APM trace metrics
+    - name: error-rate
+      interval: 30s
+      count: 3
+      successCondition: result[0] <= 0.001
+      failureLimit: 1
+      provider:
+        datadog:
+          query: "sum:trace.tibco_bwce_order_service.request.errors{env:prod}.as_count() / sum:trace.tibco_bwce_order_service.request.hits{env:prod}.as_count()"
+          secretName: datadog-api-credentials
+
+    # 2. Latency Verification (p99 < 250ms) via Datadog APM trace metrics
+    - name: p99-latency
+      interval: 30s
+      count: 3
+      successCondition: result[0] <= 0.250
+      failureLimit: 1
+      provider:
+        datadog:
+          query: "p99:trace.tibco_bwce_order_service.request.duration{env:prod}"
+          secretName: datadog-api-credentials

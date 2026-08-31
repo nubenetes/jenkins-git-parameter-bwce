@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<repository xmlns="http://www.tibco.com/xmlns/repo/types/2002">
+	<globalVariables>
+		<globalVariable>
+			<name>/HTTP/Port</name>
+			<value>8080</value>
+			<type>Integer</type>
+		</globalVariable>
+		<globalVariable>
+			<name>/Database/Host</name>
+			<value>postgresql-ha.nubenetes-prod-bwce.svc.cluster.local</value>
+			<type>String</type>
+		</globalVariable>
+		<globalVariable>
+			<name>/Database/Port</name>
+			<value>5432</value>
+			<type>Integer</type>
+		</globalVariable>
+		<globalVariable>
+			<name>/JMS/BrokerUrl</name>
+			<value>tcp://ems-prod-primary:7222,tcp://ems-prod-backup:7222</value>
+			<type>String</type>
+		</globalVariable>
+	</globalVariables>
+</repository>

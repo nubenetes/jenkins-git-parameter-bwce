@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: TIBCO BWCE Order Processing Service
+Bundle-SymbolicName: com.nubenetes.bwce.order.service
+Bundle-Version: 2.1.0.qualifier
+Bundle-Vendor: Nubenetes Platform
+TIBCO-BW-Version: 2.9.2
+TIBCO-BW-Application: com.nubenetes.bwce.order.service.application
+TIBCO-BW-ConfigProfile: META-INF/default.substvar
+TIBCO-BW-Edition: bwcf

@@ -1,0 +1,70 @@
+# ==============================================================================
+# OpenShift Multi-Cluster Topology Configuration (TIBCO BWCE Workloads)
+# github.com/nubenetes/jenkins-git-parameter-bwce
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nubenetes-cluster-topology
+  namespace: jenkins
+data:
+  clusters.yaml: |
+    topologyVersion: "2026.1"
+    primaryCluster: "ocp-dev"
+    clusters:
+      - name: "ocp-dev"
+        environment: "dev"
+        role: "ci-cd-and-workloads"
+        server: "https://api.ocp-dev.nubenetes.internal:6443"
+        ingressDomain: "apps.ocp-dev.nubenetes.internal"
+        registry:
+          internal: "image-registry.openshift-image-registry.svc:5000"
+          external: "default-route-openshift-image-registry.apps.ocp-dev.nubenetes.internal"
+          namespacePrefix: "nubenetes-dev-bwce"
+        argocd:
+          serverName: "in-cluster"
+          destinationNamespace: "nubenetes-dev-bwce"
+        datadog:
+          env: "dev"
+          agentService: "datadog-agent.observability.svc.cluster.local"
+        namespaces:
+          ci: "jenkins"
+          gitops: "argocd"
+          observability: "observability"
+          workloads: "nubenetes-dev-bwce"
+
+      - name: "ocp-staging"
+        environment: "staging"
+        role: "uat-workloads"
+        server: "https://api.ocp-staging.nubenetes.internal:6443"
+        ingressDomain: "apps.ocp-staging.nubenetes.internal"
+        registry:
+          internal: "image-registry.openshift-image-registry.svc:5000"
+          external: "default-route-openshift-image-registry.apps.ocp-staging.nubenetes.internal"
+          namespacePrefix: "nubenetes-staging-bwce"
+        argocd:
+          serverName: "ocp-staging-cluster"
+          destinationNamespace: "nubenetes-staging-bwce"
+        datadog:
+          env: "staging"
+          agentService: "datadog-agent.observability.svc.cluster.local"
+        namespaces:
+          workloads: "nubenetes-staging-bwce"
+
+      - name: "ocp-prod"
+        environment: "prod"
+        role: "production-workloads"
+        server: "https://api.ocp-prod.nubenetes.internal:6443"
+        ingressDomain: "apps.ocp-prod.nubenetes.internal"
+        registry:
+          internal: "image-registry.openshift-image-registry.svc:5000"
+          external: "default-route-openshift-image-registry.apps.ocp-prod.nubenetes.internal"
+          namespacePrefix: "nubenetes-prod-bwce"
+        argocd:
+          serverName: "ocp-prod-cluster"
+          destinationNamespace: "nubenetes-prod-bwce"
+        datadog:
+          env: "prod"
+          agentService: "datadog-agent.observability.svc.cluster.local"
+        namespaces:
+          workloads: "nubenetes-prod-bwce"

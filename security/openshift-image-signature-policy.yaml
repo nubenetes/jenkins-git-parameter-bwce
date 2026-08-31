@@ -1,0 +1,13 @@
+apiVersion: operator.openshift.io/v1alpha1
+kind: ImageSignaturePolicy
+metadata:
+  name: bwce-strict-signature-enforcement
+spec:
+  scope: image-registry.openshift-image-registry.svc:5000/nubenetes-prod-bwce
+  rules:
+    - type: signedBy
+      keyType: cosign
+      publicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2Z7d6k0f8v1x4m9zQ...
+        -----END PUBLIC KEY-----

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpws:process exitOnStandardFault="no" name="com.nubenetes.bwce.order.service.OrderProcess"
+    suppressJoinFailure="yes"
+    targetNamespace="http://xmlns.nubenetes.com/2026/OrderProcess"
+    xmlns:bpws="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+    xmlns:tibex="http://www.tibco.com/bpel/2007/extensions"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <tibex:ProcessInfo callable="false" createdBy="nubenetes"
+        date="2026-08-31T09:00:00Z" description="Process for handling order placement and fulfillment"/>
+    <bpws:scope name="MainScope">
+        <bpws:flow name="Flow">
+            <bpws:links/>
+            <!-- TIBCO BWCE HTTP Receiver & Database Activity Definition -->
+        </bpws:flow>
+    </bpws:scope>
+</bpws:process>

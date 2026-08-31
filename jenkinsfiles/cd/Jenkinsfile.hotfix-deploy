@@ -1,0 +1,55 @@
+// ==============================================================================
+// Declarative CD Pipeline: Fast-Track Emergency Hotfix Deployment for TIBCO BWCE
+// ==============================================================================
+pipeline {
+    agent {
+        node {
+            label 'argocd-gitops'
+        }
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '30', daysToKeepStr: '30'))
+        timestamps()
+        ansiColor('xterm')
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        ARGOCD_SERVER = 'argocd-server.argocd.svc.cluster.local:443'
+    }
+
+    stages {
+        stage('Validate Hotfix Parameters') {
+            steps {
+                script {
+                    echo "🚨 EMERGENCY HOTFIX TRIGGERED FOR TIBCO BWCE 🚨"
+                    echo "App: ${params.APP_NAME} | Tag: ${params.HOTFIX_IMAGE_TAG} | Target: ${params.TARGET_CLUSTER}"
+                    echo "Incident Ticket: ${params.EMERGENCY_INCIDENT_TICKET}"
+                    
+                    datadogLogEvent(
+                        name: 'cd.bwce.hotfix_initiated',
+                        status: 'WARNING',
+                        app: params.APP_NAME,
+                        ticket: params.EMERGENCY_INCIDENT_TICKET,
+                        targetCluster: params.TARGET_CLUSTER
+                    )
+                }
+            }
+        }
+
+        stage('Sync Hotfix via ArgoCD 3.5') {
+            steps {
+                script {
+                    echo "===> Fast-tracking ArgoCD sync to ${params.TARGET_CLUSTER}..."
+                    argoAppSync(
+                        appName: "${params.APP_NAME}-prod",
+                        targetRevision: params.HOTFIX_CONFIG_TAG,
+                        server: env.ARGOCD_SERVER
+                    )
+                }
+            }
+        }
+    }
+}

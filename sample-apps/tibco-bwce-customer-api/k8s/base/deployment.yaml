@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tibco-bwce-customer-api
+  labels:
+    app.kubernetes.io/name: tibco-bwce-customer-api
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: tibco-bwce-customer-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tibco-bwce-customer-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tibco-bwce-customer-api
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: tibco-bwce-customer-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: tibco-bwce-customer-api
+          image: image-registry.openshift-image-registry.svc:5000/nubenetes-dev-bwce/tibco-bwce-customer-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BW_PROFILE
+              value: "DEV.substvar"
+            - name: DD_ENV
+              value: "dev"
+            - name: DD_SERVICE
+              value: "tibco-bwce-customer-api"
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: BW_JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -javaagent:/opt/datadog/dd-java-agent.jar -Ddd.logs.injection=true"

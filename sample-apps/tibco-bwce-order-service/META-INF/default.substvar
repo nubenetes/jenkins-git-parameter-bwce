@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<repository xmlns="http://www.tibco.com/xmlns/repo/types/2002">
+	<globalVariables>
+		<globalVariable>
+			<name>BW.DEPLOYMENTUNIT.NAME</name>
+			<value>tibco-bwce-order-service</value>
+			<type>String</type>
+		</globalVariable>
+		<globalVariable>
+			<name>BW.MODULE.VERSION</name>
+			<value>2.1.0</value>
+			<type>String</type>
+		</globalVariable>
+		<globalVariable>
+			<name>/HTTP/Port</name>
+			<value>8080</value>
+			<type>Integer</type>
+		</globalVariable>
+		<globalVariable>
+			<name>/Database/Host</name>
+			<value>localhost</value>
+			<type>String</type>
+		</globalVariable>
+		<globalVariable>
+			<name>/Database/Port</name>
+			<value>5432</value>
+			<type>Integer</type>
+		</globalVariable>
+	</globalVariables>
+</repository>

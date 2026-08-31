@@ -1,0 +1,99 @@
+# ==============================================================================
+# Jenkins Official Helm Chart Values (Base) - TIBCO BWCE & Datadog Stack
+# Charts: jenkins/jenkins (v5.8.31)
+# Jenkins Core: 2.492.2-lts-jdk21
+# ==============================================================================
+controller:
+  componentName: "jenkins-controller"
+  image:
+    repository: "jenkins/jenkins"
+    tag: "2.492.2-lts-jdk21"
+    pullPolicy: "IfNotPresent"
+  
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2048Mi"
+    limits:
+      cpu: "2000m"
+      memory: "4096Mi"
+
+  javaOpts: >-
+    -Djenkins.install.runSetupWizard=false
+    -Dorg.apache.commons.jelly.tags.core.UseGroovyTag.replace=true
+    -Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=false
+    -Dorg.jenkinsci.plugins.gitclient.GitClient.useCli=true
+    -XX:+UseG1GC
+    -XX:+ExplicitGCInvokesConcurrent
+    -XX:+AlwaysPreTouch
+    -XX:+UseStringDeduplication
+
+  jenkinsUriPrefix: ""
+  
+  serviceAccount:
+    create: true
+    name: "jenkins"
+    annotations: {}
+
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+
+  agentListenerPort: 50000
+
+  runAsUser: 1000
+  fsGroup: 1000
+
+  persistence:
+    enabled: true
+    size: "30Gi"
+    accessMode: "ReadWriteOnce"
+    mountPath: "/var/jenkins_home"
+
+  installPlugins:
+    - "git:5.7.0"
+    - "git-client:6.1.2"
+    - "git-parameter:0.10.0"
+    - "configuration-as-code:1932.v652924373400"
+    - "job-dsl:1.89"
+    - "workflow-aggregator:600.vb_57cdd26fdd7"
+    - "workflow-multibranch:795.ve3604f868c2f"
+    - "pipeline-stage-view:2.35"
+    - "pipeline-graph-view:320.v8f37a_e1281cb_"
+    - "pipeline-graph-analysis:244.va_61f008c2a_62"
+    - "pipeline-model-definition:2.2221.vc805a_0e872d0"
+    - "pipeline-utility-steps:2.17.0"
+    - "kubernetes:4325.vd1b_7218652c6"
+    - "kubernetes-credentials-provider:1.266.v86ec77cf649c"
+    - "credentials-binding:687.v9364235e2365"
+    - "datadog:5.9.0"
+    - "sonar:2.17.2"
+    - "ansicolor:1.0.5"
+    - "timestamper:1.28"
+    - "generic-webhook-trigger:2.2.4"
+    - "http_request:1.19"
+    - "matrix-auth:3.2.4"
+    - "ws-cleanup:0.46"
+    - "ssh-agent:3.340.v9a_f854b_a_c953"
+
+  # JCasC Configuration
+  JCasC:
+    enabled: true
+    defaultConfig: true
+    configScripts:
+      custom-jcasc: |
+        # Injected via JCasC ConfigMap
+
+agent:
+  enabled: true
+  image:
+    repository: "jenkins/inbound-agent"
+    tag: "3283.v92c105e0f819-1-jdk21"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"

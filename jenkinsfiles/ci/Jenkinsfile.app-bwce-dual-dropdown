@@ -1,0 +1,93 @@
+// ==============================================================================
+// Declarative CI Pipeline: Dual-Dropdown Multi-Remote SCM (TIBCO BWCE)
+// Pattern 1: Sandbox & Preview Deployment (BWCE App Repo + Global Vars Repo)
+// ==============================================================================
+pipeline {
+    agent {
+        node {
+            label 'bwce-maven-builder'
+        }
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20', daysToKeepStr: '15'))
+        timestamps()
+        ansiColor('xterm')
+        timeout(time: 35, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        APP_NAME           = 'tibco-bwce-order-service'
+        DEV_REGISTRY       = 'image-registry.openshift-image-registry.svc:5000'
+        DEV_NAMESPACE      = 'nubenetes-dev-bwce'
+        IMAGE_NAME         = "${env.DEV_REGISTRY}/${env.DEV_NAMESPACE}/${env.APP_NAME}"
+        APP_COMMIT_SHORT   = ''
+        VARS_COMMIT_SHORT  = ''
+        CALCULATED_TAG     = ''
+    }
+
+    stages {
+        stage('Checkout Multi-Remote Repositories') {
+            steps {
+                script {
+                    echo "===> [Multi-Remote SCM] Fetching Application Repository & Global Variables..."
+                    echo "===> Dropdown 1 (BWCE App): ${params.APP_GIT_REVISION}"
+                    echo "===> Dropdown 2 (Global Vars): ${params.GLOBAL_VARS_REVISION}"
+
+                    checkout scm
+
+                    sh "git checkout ${params.APP_GIT_REVISION}"
+                    env.APP_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
+                    dir('global-vars-workspace') {
+                        git url: 'https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars.git',
+                            branch: params.GLOBAL_VARS_REVISION
+                        env.VARS_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    }
+
+                    env.CALCULATED_TAG = "preview-${BUILD_NUMBER}-${env.APP_COMMIT_SHORT}-${env.VARS_COMMIT_SHORT}"
+                    currentBuild.displayName = "#${BUILD_NUMBER} (App:${params.APP_GIT_REVISION} | Vars:${params.GLOBAL_VARS_REVISION})"
+                }
+            }
+        }
+
+        stage('Apply Profile Override & Compile EAR') {
+            steps {
+                container('bwce-builder') {
+                    echo "===> Injecting substvar profile tokens from Global Vars into BWCE EAR..."
+                    bwceProfileOverride(
+                        profileSource: "global-vars-workspace/environments/${params.TARGET_ENVIRONMENT}.yaml",
+                        targetProfile: 'DEV.substvar'
+                    )
+                    bwceEarBuild(
+                        appName: env.APP_NAME,
+                        version: env.CALCULATED_TAG,
+                        profile: 'DEV.substvar'
+                    )
+                }
+            }
+        }
+
+        stage('Build & Deploy to Preview Environment') {
+            when {
+                expression { return params.DEPLOY_TO_DEV == true }
+            }
+            steps {
+                echo "===> Deploying BWCE container preview to OpenShift DEV namespace..."
+                sh """
+                    echo "Building preview image: ${env.IMAGE_NAME}:${env.CALCULATED_TAG}"
+                    echo "Updating K8s manifests with Datadog annotations..."
+                """
+                datadogLogEvent(
+                    name: 'ci.bwce.dual_dropdown_preview_deployed',
+                    status: 'SUCCESS',
+                    app: env.APP_NAME,
+                    appBranch: params.APP_GIT_REVISION,
+                    varsBranch: params.GLOBAL_VARS_REVISION,
+                    env: params.TARGET_ENVIRONMENT
+                )
+            }
+        }
+    }
+}

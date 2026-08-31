@@ -1,0 +1,98 @@
+# ==============================================================================
+# Ephemeral Kubernetes Agent Pod Templates (TIBCO BWCE & OpenShift 4.20+ Hardened)
+# ==============================================================================
+jenkins:
+  clouds:
+    - kubernetes:
+        name: "openshift-cluster"
+        serverUrl: "https://kubernetes.default.svc"
+        namespace: "jenkins"
+        jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
+        jenkinsTunnel: "jenkins-agent.jenkins.svc.cluster.local:50000"
+        containerCapStr: "50"
+        retentionTimeout: 10
+        connectTimeout: 100
+        templates:
+          # Pod Template: TIBCO BWCE Maven & EAR Builder with DogStatsD
+          - name: "bwce-maven-builder"
+            label: "bwce-maven-builder"
+            serviceAccount: "jenkins"
+            nodeUsageMode: "EXCLUSIVE"
+            workspaceVolume:
+              emptyDirWorkspaceVolume:
+                memory: false
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:3283.v92c105e0f819-1-jdk21"
+                privileged: false
+                alwaysPullImage: false
+                workingDir: "/home/jenkins/agent"
+                resourceRequestCpu: "200m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"
+              - name: "bwce-builder"
+                image: "maven:3.9.9-eclipse-temurin-21-alpine"
+                command: "cat"
+                ttyEnabled: true
+                privileged: false
+                alwaysPullImage: false
+                workingDir: "/home/jenkins/agent"
+                resourceRequestCpu: "1000m"
+                resourceLimitCpu: "3000m"
+                resourceRequestMemory: "1536Mi"
+                resourceLimitMemory: "4096Mi"
+                envVars:
+                  - envVar:
+                      key: "JAVA_TOOL_OPTIONS"
+                      value: "-Dfile.encoding=UTF-8 -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+          # Pod Template: Security (Trivy), Cosign & Skopeo Multi-Cluster Promotion
+          - name: "skopeo-trivy"
+            label: "skopeo-trivy"
+            serviceAccount: "jenkins"
+            nodeUsageMode: "EXCLUSIVE"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:3283.v92c105e0f819-1-jdk21"
+              - name: "skopeo"
+                image: "quay.io/skopeo/stable:v1.17.0"
+                command: "cat"
+                ttyEnabled: true
+                workingDir: "/home/jenkins/agent"
+                resourceRequestCpu: "200m"
+                resourceLimitCpu: "1000m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "1024Mi"
+              - name: "trivy"
+                image: "aquasec/trivy:0.59.1"
+                command: "cat"
+                ttyEnabled: true
+                workingDir: "/home/jenkins/agent"
+                resourceRequestCpu: "500m"
+                resourceLimitCpu: "1000m"
+                resourceRequestMemory: "512Mi"
+                resourceLimitMemory: "1024Mi"
+
+          # Pod Template: ArgoCD 3.5 CLI & GitOps Orchestrator
+          - name: "argocd-gitops"
+            label: "argocd-gitops"
+            serviceAccount: "jenkins"
+            nodeUsageMode: "EXCLUSIVE"
+            containers:
+              - name: "jnlp"
+                image: "jenkins/inbound-agent:3283.v92c105e0f819-1-jdk21"
+              - name: "argocd"
+                image: "quay.io/argoproj/argocd:v2.13.3"
+                command: "cat"
+                ttyEnabled: true
+                workingDir: "/home/jenkins/agent"
+              - name: "gitops-tools"
+                image: "alpine/k8s:1.31.2"
+                command: "cat"
+                ttyEnabled: true
+                workingDir: "/home/jenkins/agent"
+                resourceRequestCpu: "200m"
+                resourceLimitCpu: "500m"
+                resourceRequestMemory: "256Mi"
+                resourceLimitMemory: "512Mi"

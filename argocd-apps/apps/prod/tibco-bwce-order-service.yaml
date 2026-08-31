@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tibco-bwce-order-service-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nubenetes/jenkins-git-parameter-bwce.git
+    targetRevision: main
+    path: sample-apps/tibco-bwce-order-service/k8s/overlays/prod
+  destination:
+    name: ocp-prod-cluster
+    namespace: nubenetes-prod-bwce

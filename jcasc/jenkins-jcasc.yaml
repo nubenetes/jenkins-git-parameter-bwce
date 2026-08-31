@@ -1,0 +1,127 @@
+# ==============================================================================
+# Jenkins Configuration as Code (JCasC) - TIBCO BWCE & Datadog Platform Setup
+# ==============================================================================
+jenkins:
+  systemMessage: "🚀 Nubenetes Enterprise TIBCO BWCE Platform on Red Hat OpenShift 4.20+ | Datadog Observability & ArgoCD 3.5 GitOps Orchestrator"
+  numExecutors: 0
+  mode: EXCLUSIVE
+  scmCheckoutRetryCount: 3
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          name: "OpenShift Platform Admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin123!}"
+        - id: "ci-service"
+          name: "Backstage / ITSM Service Account"
+          password: "${JENKINS_SERVICE_PASSWORD:-service123!}"
+
+  authorizationStrategy:
+    projectMatrix:
+      permissions:
+        - "Overall/Administer:admin"
+        - "Overall/Read:authenticated"
+        - "Overall/Read:anonymous"
+        - "Job/Build:authenticated"
+        - "Job/Read:authenticated"
+        - "Job/Read:anonymous"
+        - "Job/Cancel:authenticated"
+        - "Job/Workspace:authenticated"
+        - "View/Read:authenticated"
+        - "View/Read:anonymous"
+
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: true
+
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "PLATFORM_DOMAIN"
+            value: "apps.ocp-dev.nubenetes.internal"
+          - key: "GLOBAL_VARS_REPO"
+            value: "https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars.git"
+          - key: "ARGOCD_SERVER_GRPC"
+            value: "argocd-server.argocd.svc.cluster.local:443"
+          - key: "DEV_REGISTRY_HOST"
+            value: "image-registry.openshift-image-registry.svc:5000"
+          - key: "STAGING_REGISTRY_HOST"
+            value: "image-registry.openshift-image-registry.svc:5000"
+          - key: "PROD_REGISTRY_HOST"
+            value: "image-registry.openshift-image-registry.svc:5000"
+          - key: "DATADOG_AGENT_HOST"
+            value: "datadog-agent.observability.svc.cluster.local"
+
+unclassified:
+  location:
+    url: "https://jenkins-jenkins.apps.ocp-dev.nubenetes.internal/"
+    adminAddress: "devops-team@nubenetes.io"
+
+  # Datadog Jenkins Plugin Configuration for CI Visibility & APM Metrics
+  datadogGlobalBuildListener:
+    datadogClient:
+      apiKey: "${DATADOG_API_KEY:-00000000000000000000000000000000}"
+      site: "datadoghq.eu"
+    targetHost: "datadog-agent.observability.svc.cluster.local"
+    targetPort: 8125
+    targetTracePort: 8126
+    targetLogPort: 10518
+    emitSystemConsoleLog: true
+    collectBuildLogs: true
+    enableCiVisibility: true
+    ciInstanceName: "nubenetes-jenkins-ocp-dev"
+    globalTags:
+      - "env:dev"
+      - "team:integration-platform"
+      - "tech:tibco-bwce"
+      - "cluster:ocp-dev"
+    globalJobTags:
+      - regex: ".*"
+        tagList:
+          - "orchestrator:jenkins"
+
+  # Global Pipeline Libraries Configuration
+  globalLibraries:
+    libraries:
+      - name: "nubenetes-bwce-shared-library"
+        defaultVersion: "main"
+        implicit: true
+        allowVersionOverride: true
+        includeInChangesets: false
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "https://github.com/nubenetes/jenkins-git-parameter-bwce.git"
+                traits:
+                  - gitBranchDiscovery
+
+# Seed Job Definition using JCasC Job DSL Integration
+jobs:
+  - script: >
+      job('00-Seed-Job-BWCE-Platform-Orchestrator') {
+        description('Master Seed Job provisioning TIBCO BWCE CI Build Pipelines and CD Release Orchestration Pipelines as Code.')
+        keepDependencies(false)
+        scm {
+          git {
+            remote {
+              url('https://github.com/nubenetes/jenkins-git-parameter-bwce.git')
+            }
+            branch('*/main')
+          }
+        }
+        steps {
+          jobDsl {
+            targets('jobdsl/pipelines-ci.groovy
+jobdsl/pipelines-cd.groovy')
+            removedJobAction('DELETE')
+            removedViewAction('DELETE')
+            lookupStrategy('JENKINS_ROOT')
+          }
+        }
+        triggers {
+          scm('H/15 * * * *')
+        }
+      }

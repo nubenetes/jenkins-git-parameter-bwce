@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bwce-root-app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nubenetes/jenkins-git-parameter-bwce.git
+    targetRevision: main
+    path: argocd-apps/apps/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nubenetes-dev-bwce
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

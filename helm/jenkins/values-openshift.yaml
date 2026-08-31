@@ -1,0 +1,34 @@
+# ==============================================================================
+# OpenShift 4.20+ Hardening & Route Values for Jenkins
+# ==============================================================================
+controller:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+
+  route:
+    enabled: true
+    labels:
+      app: jenkins-controller
+      tier: control-plane
+    annotations:
+      route.openshift.io/termination: "edge"
+      haproxy.router.openshift.io/timeout: "300s"
+    host: jenkins-jenkins.apps.ocp-dev.nubenetes.internal
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+
+  serviceAccount:
+    name: jenkins
+    create: true
+    annotations:
+      serviceaccounts.openshift.io/oauth-redirectreference.jenkins: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"jenkins"}}'

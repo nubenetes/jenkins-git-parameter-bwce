@@ -1,0 +1,44 @@
+{
+  "title": "Jenkins CI/CD Pipeline Visibility & Agent Metrics (TIBCO BWCE)",
+  "description": "Datadog dashboard for Jenkins CI/CD build metrics, pipeline durations, queue times, and test results",
+  "widgets": [
+    {
+      "definition": {
+        "title": "CI Pipeline Execution Duration (p95 / avg)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:jenkins.job.duration{env:dev,tech:tibco-bwce} by {job_name}",
+            "display_type": "line"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "Build Success vs Failure Rates",
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "sum:jenkins.job.completed{env:dev,result:success}.as_count() / sum:jenkins.job.completed{env:dev}.as_count() * 100",
+            "aggregator": "last"
+          }
+        ],
+        "custom_unit": "%"
+      }
+    },
+    {
+      "definition": {
+        "title": "Active Kubernetes Build Agents Queue",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:jenkins.queue.size{env:dev}",
+            "display_type": "bars"
+          }
+        ]
+      }
+    }
+  ],
+  "layout_type": "ordered"
+}

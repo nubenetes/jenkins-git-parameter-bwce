@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: bwce-pr-preview-generator
+  namespace: argocd
+spec:
+  generators:
+    - pullRequest:
+        github:
+          owner: nubenetes
+          repo: tibco-bwce-order-service
+          labels:
+            - preview-env
+  template:
+    metadata:
+      name: "pr-{{number}}-tibco-bwce-order-service"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/nubenetes/jenkins-git-parameter-bwce.git
+        targetRevision: "{{head_sha}}"
+        path: sample-apps/tibco-bwce-order-service/k8s/overlays/dev
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "nubenetes-preview-pr-{{number}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

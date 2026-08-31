@@ -1,0 +1,41 @@
+# ==============================================================================
+# Automated Datadog Alert Monitors for TIBCO BWCE Platform
+# ==============================================================================
+monitors:
+  - name: "[BWCE] High HTTP 5xx Error Rate on Order Service"
+    type: metric alert
+    query: "sum(last_5m):sum:trace.tibco_bwce_order_service.request.errors{env:prod}.as_count() / sum:trace.tibco_bwce_order_service.request.hits{env:prod}.as_count() > 0.01"
+    message: |
+      🚨 High error rate detected on TIBCO BWCE Order Processing Service in PROD!
+      Error rate exceeded 1.0% over the last 5 minutes.
+      @pagerduty-integration-platform @slack-bwce-alerts
+    options:
+      thresholds:
+        critical: 0.01
+        warning: 0.005
+      notify_no_data: false
+      evaluation_delay: 60
+
+  - name: "[BWCE] p99 Response Latency Exceeded SLA (>500ms)"
+    type: metric alert
+    query: "avg(last_5m):p99:trace.tibco_bwce_order_service.request.duration{env:prod} > 0.5"
+    message: |
+      ⚠️ p99 Latency SLA breach on TIBCO BWCE Order Service (>500ms).
+      Inspect engine thread pool and downstream database connections.
+      @slack-bwce-alerts
+    options:
+      thresholds:
+        critical: 0.5
+        warning: 0.35
+
+  - name: "[Jenkins] High CI/CD Build Queue Latency"
+    type: metric alert
+    query: "avg(last_10m):avg:jenkins.queue.size{env:dev} > 10"
+    message: |
+      ⚠️ Jenkins ephemeral agent queue is backed up (> 10 builds queued).
+      Check OpenShift agent pod provisioning and quota limits.
+      @slack-platform-devops
+    options:
+      thresholds:
+        critical: 10
+        warning: 5

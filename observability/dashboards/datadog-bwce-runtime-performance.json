@@ -1,0 +1,63 @@
+{
+  "title": "TIBCO BusinessWorks Container Edition (BWCE) Engine Performance",
+  "description": "Live Datadog APM & OpenMetrics dashboard tracking BWCE engine threads, process execution latency, and JVM health",
+  "widgets": [
+    {
+      "definition": {
+        "title": "BWCE Engine Active Process Instances",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:tibco_bwce.active_processes{env:prod} by {service}",
+            "display_type": "line"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "BWCE Thread Pool Utilization (%)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:tibco_bwce.engine_thread_pool_utilization{env:prod} by {service}",
+            "display_type": "area"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "APM Request Latency (p99 / p95 / p50)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "p99:trace.tibco_bwce_order_service.request.duration{env:prod}",
+            "display_type": "line"
+          },
+          {
+            "q": "p95:trace.tibco_bwce_order_service.request.duration{env:prod}",
+            "display_type": "line"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "JVM Heap Memory & GC Pause Time",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:jvm.heap_memory{env:prod,service:tibco-bwce-order-service} by {host}",
+            "display_type": "line"
+          },
+          {
+            "q": "avg:jvm.gc.pause_time{env:prod,service:tibco-bwce-order-service}",
+            "display_type": "bars"
+          }
+        ]
+      }
+    }
+  ],
+  "layout_type": "ordered"
+}

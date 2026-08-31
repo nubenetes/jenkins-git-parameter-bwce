@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tibco-bwce-order-service-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nubenetes/jenkins-git-parameter-bwce.git
+    targetRevision: main
+    path: sample-apps/tibco-bwce-order-service/k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nubenetes-dev-bwce
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

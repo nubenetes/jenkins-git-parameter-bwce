@@ -1,0 +1,78 @@
+# ==============================================================================
+# Enterprise Datadog Agent Helm Values (OpenShift 4.20+ Hardened)
+# Chart: datadog/datadog (v3.90.0+) | Agent: 7.58.0+
+# ==============================================================================
+targetSystem: "linux"
+
+datadog:
+  apiKey: "${DATADOG_API_KEY}"
+  appKey: "${DATADOG_APP_KEY}"
+  site: "datadoghq.eu"
+  clusterName: "ocp-dev"
+  
+  # Unified Service Tagging
+  tags:
+    - "env:dev"
+    - "team:integration-platform"
+    - "platform:openshift-4.20"
+    - "tech:tibco-bwce"
+
+  # APM & Distributed Tracing
+  apm:
+    portEnabled: true
+    port: 8126
+    socketEnabled: true
+    hostSocketPath: /var/run/datadog/apm.socket
+
+  # DogStatsD for Custom Application & Engine Metrics
+  dogstatsd:
+    port: 8125
+    useHostPort: true
+    nonLocalTraffic: true
+
+  # Log Collection Configuration
+  logs:
+    enabled: true
+    containerCollectAll: true
+    autoMultiLineDetection: true
+
+  # Process & Live Container Monitoring
+  processAgent:
+    enabled: true
+    processCollection: true
+
+  # OpenTelemetry Protocol (OTLP) Ingest via Datadog Agent
+  otlp:
+    receiver:
+      protocols:
+        grpc:
+          enabled: true
+          endpoint: "0.0.0.0:4317"
+        http:
+          enabled: true
+          endpoint: "0.0.0.0:4318"
+
+  # Network Performance Monitoring (NPM)
+  networkMonitoring:
+    enabled: true
+
+  # Security & Compliance Context Constraints
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+clusterAgent:
+  enabled: true
+  replicas: 2
+  metricsProvider:
+    enabled: true
+    useDatadogMetrics: true
+  admissionController:
+    enabled: true
+    mutateUnlabelled: false
+
+agents:
+  podSecurity:
+    securityContextConstraints:
+      create: true

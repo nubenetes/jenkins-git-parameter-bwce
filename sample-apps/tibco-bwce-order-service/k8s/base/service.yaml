@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tibco-bwce-order-service
+  labels:
+    app.kubernetes.io/name: tibco-bwce-order-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+    - port: 8090
+      targetPort: 8090
+      name: management
+  selector:
+    app.kubernetes.io/name: tibco-bwce-order-service

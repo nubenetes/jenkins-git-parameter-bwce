@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpws:process exitOnStandardFault="no" name="com.nubenetes.bwce.order.service.HealthCheckProcess"
+    suppressJoinFailure="yes"
+    targetNamespace="http://xmlns.nubenetes.com/2026/HealthCheckProcess"
+    xmlns:bpws="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+    xmlns:tibex="http://www.tibco.com/bpel/2007/extensions">
+    <tibex:ProcessInfo callable="false" createdBy="nubenetes"
+        date="2026-08-31T09:00:00Z" description="BWCE Health Check & Liveness Probe Endpoint"/>
+</bpws:process>

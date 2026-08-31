@@ -1,0 +1,96 @@
+# ==============================================================================
+# Argo Rollouts: Canary Progressive Delivery Definition for TIBCO BWCE
+# Orchestrates traffic shifting with automated Datadog metric verification
+# ==============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: tibco-bwce-order-service-rollout
+  namespace: nubenetes-prod-bwce
+  labels:
+    app.kubernetes.io/name: tibco-bwce-order-service
+    tags.datadoghq.com/env: prod
+    tags.datadoghq.com/service: tibco-bwce-order-service
+spec:
+  replicas: 6
+  strategy:
+    canary:
+      canaryService: tibco-bwce-order-service-canary
+      stableService: tibco-bwce-order-service-stable
+      trafficRouting:
+        smi:
+          rootService: tibco-bwce-order-service
+          trafficSplitName: bwce-order-service-traffic-split
+      steps:
+        # Step 1: Route 10% traffic to Canary & Pause 5m with Datadog Analysis
+        - setWeight: 10
+        - pause: {duration: 5m}
+        - analysis:
+            templates:
+              - templateName: datadog-bwce-success-rate-and-latency
+
+        # Step 2: Route 25% traffic & Pause 10m
+        - setWeight: 25
+        - pause: {duration: 10m}
+        - analysis:
+            templates:
+              - templateName: datadog-bwce-success-rate-and-latency
+
+        # Step 3: Route 50% traffic
+        - setWeight: 50
+        - pause: {duration: 10m}
+
+        # Step 4: Promote to 100% stable
+        - setWeight: 100
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tibco-bwce-order-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tibco-bwce-order-service
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/service: tibco-bwce-order-service
+        tags.datadoghq.com/version: "2.1.0"
+      annotations:
+        ad.datadoghq.com/tibco-bwce-order-service.logs: '[{"source": "tibco-bwce", "service": "tibco-bwce-order-service"}]'
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: tibco-bwce-order-service
+          image: image-registry.openshift-image-registry.svc:5000/nubenetes-prod-bwce/tibco-bwce-order-service:2.1.0
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8090
+              name: mgmt-metrics
+          env:
+            - name: BW_PROFILE
+              value: "PROD.substvar"
+            - name: BW_LOGLEVEL
+              value: "WARN"
+            - name: BW_ENGINE_THREADCOUNT
+              value: "64"
+            - name: BW_STEP_FLOWLIMIT
+              value: "250"
+            - name: DD_ENV
+              value: "prod"
+            - name: DD_SERVICE
+              value: "tibco-bwce-order-service"
+            - name: DD_VERSION
+              value: "2.1.0"
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: BW_JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -javaagent:/opt/datadog/dd-java-agent.jar -Ddd.logs.injection=true"
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1024Mi
+            limits:
+              cpu: 2000m
+              memory: 2048Mi

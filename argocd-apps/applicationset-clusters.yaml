@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: bwce-applicationset-multi-cluster
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: ocp-dev
+            server: https://kubernetes.default.svc
+            env: dev
+            namespace: nubenetes-dev-bwce
+          - cluster: ocp-staging
+            server: https://api.ocp-staging.nubenetes.internal:6443
+            env: staging
+            namespace: nubenetes-staging-bwce
+          - cluster: ocp-prod
+            server: https://api.ocp-prod.nubenetes.internal:6443
+            env: prod
+            namespace: nubenetes-prod-bwce
+  template:
+    metadata:
+      name: "{{cluster}}-tibco-bwce-order-service"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/nubenetes/jenkins-git-parameter-bwce.git
+        targetRevision: main
+        path: "sample-apps/tibco-bwce-order-service/k8s/overlays/{{env}}"
+      destination:
+        server: "{{server}}"
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

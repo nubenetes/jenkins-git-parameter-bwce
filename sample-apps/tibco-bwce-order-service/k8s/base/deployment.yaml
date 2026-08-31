@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tibco-bwce-order-service
+  labels:
+    app.kubernetes.io/name: tibco-bwce-order-service
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: tibco-bwce-order-service
+    tags.datadoghq.com/version: "2.1.0"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tibco-bwce-order-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tibco-bwce-order-service
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: tibco-bwce-order-service
+        tags.datadoghq.com/version: "2.1.0"
+      annotations:
+        ad.datadoghq.com/tibco-bwce-order-service.logs: '[{"source": "tibco-bwce", "service": "tibco-bwce-order-service"}]'
+        ad.datadoghq.com/tibco-bwce-order-service.check_names: '["openmetrics"]'
+        ad.datadoghq.com/tibco-bwce-order-service.init_configs: '[{}]'
+        ad.datadoghq.com/tibco-bwce-order-service.instances: |
+          [
+            {
+              "openmetrics_endpoint": "http://%%host%%:8090/metrics",
+              "namespace": "tibco_bwce",
+              "metrics": [".*"]
+            }
+          ]
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: tibco-bwce-order-service
+          image: image-registry.openshift-image-registry.svc:5000/nubenetes-dev-bwce/tibco-bwce-order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: 8090
+              name: mgmt-metrics
+              protocol: TCP
+          env:
+            - name: BW_PROFILE
+              value: "DEV.substvar"
+            - name: BW_LOGLEVEL
+              value: "DEBUG"
+            - name: BW_ENGINE_THREADCOUNT
+              value: "16"
+            - name: BW_STEP_FLOWLIMIT
+              value: "50"
+            - name: DD_ENV
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/env']
+            - name: DD_SERVICE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/service']
+            - name: DD_VERSION
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/version']
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_DOGSTATSD_PORT
+              value: "8125"
+            - name: BW_JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -javaagent:/opt/datadog/dd-java-agent.jar -Ddd.logs.injection=true"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi

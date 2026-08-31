@@ -1,0 +1,31 @@
+{
+  "title": "ArgoCD 3.5 Multi-Cluster GitOps & Canary Rollouts",
+  "description": "Datadog dashboard for ArgoCD sync status, sync durations, and progressive canary rollouts",
+  "widgets": [
+    {
+      "definition": {
+        "title": "ArgoCD Application Sync Status",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "sum:argocd_app_sync_total{env:prod} by {app,phase}",
+            "display_type": "bars"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "Canary Rollout Traffic Shift Ratio (%)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:argo_rollout_canary_weight{env:prod,service:tibco-bwce-order-service}",
+            "display_type": "line"
+          }
+        ]
+      }
+    }
+  ],
+  "layout_type": "ordered"
+}

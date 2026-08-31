@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema targetNamespace="http://xmlns.nubenetes.com/2026/Order"
+        elementFormDefault="qualified"
+        xmlns="http://www.w3.org/2001/XMLSchema"
+        xmlns:tns="http://xmlns.nubenetes.com/2026/Order">
+    <element name="OrderRequest">
+        <complexType>
+            <sequence>
+                <element name="orderId" type="string"/>
+                <element name="customerId" type="string"/>
+                <element name="amount" type="decimal"/>
+                <element name="currency" type="string"/>
+            </sequence>
+        </complexType>
+    </element>
+    <element name="OrderResponse">
+        <complexType>
+            <sequence>
+                <element name="orderId" type="string"/>
+                <element name="status" type="string"/>
+                <element name="trackingNumber" type="string"/>
+            </sequence>
+        </complexType>
+    </element>
+</schema>
