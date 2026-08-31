@@ -29,6 +29,12 @@ An enterprise-grade, multi-cluster continuous integration and progressive delive
 > - **AI Generation Attribution**: This architecture, Infrastructure-as-Code implementation, and documentation were generated using **Gemini 3.7 Flash** with **Antigravity**.
 > - **Origin & Real-World Heritage**: This blueprint is based on [nubenetes/jenkins-git-parameter](https://github.com/nubenetes/jenkins-git-parameter) and [nubenetes/jenkins-git-parameter-global-vars](https://github.com/nubenetes/jenkins-git-parameter-global-vars), drawing directly from the author's personal hands-on experience designing and operating enterprise integration platforms with these exact requirements (engineered just before agentic AI became widespread).
 
+> [!TIP]
+> ### 🔗 Companion Repository (Single Source of Truth)
+> This orchestration platform works in tandem with its centralized configuration repository:  
+> 🌐 **[nubenetes/jenkins-git-parameter-bwce-global-vars](https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars)**  
+> *(Houses multi-cluster environment topologies, externalized `.substvar` BWCE profiles, Helm values, and Vault secret references)*
+
 ---
 
 ## 📑 Table of Contents
