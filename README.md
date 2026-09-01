@@ -631,6 +631,67 @@ sequenceDiagram
 
 ---
 
+
+### Automated Downstream Hand-off & Environment Targeting for BWCE
+
+In Pattern 2, **Pipeline 01 (BWCE CI Build)** and **Pipeline 02 (CD Release Orchestrator)** are connected via an automated downstream hand-off trigger:
+
+<details>
+<summary>🔄 <b>Click to expand: BWCE Downstream Hand-off & Multi-Environment Promotion Flow Diagram</b></summary>
+
+```mermaid
+flowchart LR
+    subgraph CIStage["1. Pipeline 01: BWCE CI"]
+        direction TB
+        Dev1["👩‍💻 User"] -->|"Selects Branch & Env"| CI["🏗️ 01-CI-Build<br/>• Packages EAR<br/>• Signs Image<br/>• Pushes to DEV"]
+        CI -->|"Trigger CD"| Dispatch["⚡ build job:<br/>02-CD-Orchestrator<br/>Passes: IMAGE_TAG"]
+    end
+
+    subgraph CDStage["2. Pipeline 02: CD Orchestrator"]
+        direction TB
+        Dispatch --> CD["🚀 02-CD-Orchestrator<br/>• Resolves .substvar<br/>• Routes by Env"]
+        
+        CD -->|"env == 'dev'"| DevTarget["☸️ OpenShift DEV<br/>• gitopsCommit(dev)<br/>• argoAppSync(dev)"]
+        CD -->|"env == 'staging'"| StgTarget["☸️ OpenShift STAGING<br/>• skopeoPromote<br/>• argoAppSync(stg)"]
+        CD -->|"env == 'prod'"| PrdTarget["☸️ OpenShift PROD<br/>• Approval Gate<br/>• skopeoPromote<br/>• argoAppSync(prd)"]
+    end
+```
+
+</details>
+
+#### 📋 Downstream Parameter Passing & Execution Logic:
+* **Configured in Job DSL (`jobdsl/pipelines-ci.groovy`)**:
+  * `TRIGGER_CD_RELEASE` (boolean, default: `true`): Automatically dispatches downstream release.
+  * `GLOBAL_VARS_BRANCH` (string, default: `'main'`): Global configuration repository branch passed to Pipeline 02.
+  * `TARGET_ENVIRONMENT` (choice: `dev`, `staging`, `prod`, `full-promotion-chain`): Initial target environment.
+* **Trigger Stage in Pipeline 01 (`Jenkinsfile.app-bwce`)**:
+  ```groovy
+  stage('Trigger CD Release Orchestrator') {
+      when { expression { return params.TRIGGER_CD_RELEASE == true } }
+      steps {
+          build job: '02-CD-Release-Orchestrators/multi-cluster-release-orchestrator',
+              parameters: [
+                  string(name: 'GLOBAL_VARS_REVISION', value: params.GLOBAL_VARS_BRANCH ?: 'main'),
+                  string(name: 'APP_NAME', value: env.APP_NAME),
+                  string(name: 'IMAGE_TAG', value: env.CALCULATED_TAG),
+                  string(name: 'TARGET_ENVIRONMENT', value: params.TARGET_ENVIRONMENT ?: 'dev'),
+                  booleanParam(name: 'AUTO_PROMOTE_TO_STAGING', value: true),
+                  booleanParam(name: 'REQUIRE_PROD_APPROVAL', value: true),
+                  string(name: 'TRIGGERED_BY', value: 'CI_PIPELINE'),
+                  string(name: 'CHANGE_REQUEST_ID', value: "CI-BWCE-AUTO-${BUILD_NUMBER}")
+              ],
+              wait: false
+      }
+  }
+  ```
+* **Environment-Specific Routing in Pipeline 02 (`Jenkinsfile.release-orchestrator`)**:
+  * **Target `dev`**: Binds `DEV.substvar` profile and triggers `argoAppSync` on OpenShift DEV.
+  * **Target `staging`**: Promotes container image via Skopeo, binds `STAGING.substvar`, and synchronizes OpenShift STAGING.
+  * **Target `prod`**: Promotes image to PROD registry, pauses at the interactive `Production Approval Gate` (`input` step), binds `PROD.substvar`, and deploys via ArgoCD canary sync waves on OpenShift PROD.
+
+> **💡 Architectural Summary & Conclusion**:
+> This automated linkage guarantees 'Build Once, Deploy Anywhere' artifact immutability for TIBCO BWCE. The EAR archive is compiled and packaged once in CI, while Pipeline 02 promotes the verified container image across environments by binding the appropriate `.substvar` profiles.
+
 ## Enterprise Security & Supply Chain Integrity
 
 ### 1. Cosign Image Signing & SLSA Level 3 Attestation
