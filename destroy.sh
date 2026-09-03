@@ -4,9 +4,13 @@
 # ==============================================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "======================================================================"
 echo "⚠️  INITIATING CLEAN DECOMMISSION: TIBCO BWCE PLATFORM"
 echo "======================================================================"
+
+kubectl delete -f "${SCRIPT_DIR}/argocd-apps/" --ignore-not-found=true 2>/dev/null || true
 
 if command -v helm &>/dev/null; then
     helm uninstall jenkins -n jenkins 2>/dev/null || true

@@ -1,0 +1,27 @@
+# Changelog
+
+All notable changes to the **TIBCO BWCE Jenkins Git Parameter Platform** will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.0.0] - 2026-09-03
+
+### Summary
+Initial production-ready release of the **TIBCO BWCE Jenkins Git Parameter** enterprise platform on **Red Hat OpenShift 4.20+** and **Kubernetes 1.31+**. Reviewed, audited, and hardened using **Gemini 3.8 Flash**.
+
+This architecture orchestrates dynamic interactive branch/tag builds powered by the Jenkins Git Parameter plugin and synchronized with the externalized TIBCO BWCE configuration SSOT repository ([`jenkins-git-parameter-bwce-global-vars`](https://github.com/nubenetes/jenkins-git-parameter-bwce-global-vars)).
+
+---
+
+### 🚀 Added
+- **Clean Decommission Ordering**:
+  - `destroy.sh` explicitly deletes `argocd-apps/` resources before terminating namespaces to avoid stuck namespace finalizers.
+
+---
+
+### 🛠️ Fixed
+- **Modernized Kustomize Overlays**:
+  - Replaced deprecated `bases:` with `resources:` in `sample-apps/tibco-bwce-order-service/k8s/overlays/*/kustomization.yaml`.

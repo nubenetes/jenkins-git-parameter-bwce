@@ -3,5 +3,5 @@ kind: Kustomization
 
 namespace: nubenetes-staging-bwce
 
-bases:
+resources:
   - ../../base

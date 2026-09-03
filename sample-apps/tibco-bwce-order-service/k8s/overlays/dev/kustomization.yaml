@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: nubenetes-dev-bwce
 
-bases:
+resources:
   - ../../base
 
 patchesStrategicMerge:
